@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { formatBeijingTime, getBeijingToday, extractDateStr, parseDateAsBeijing } from '@/lib/time'
+import { RECORDS_CHANGED_EVENT } from '@/lib/cache-helpers'
+import HomepageSummaryCards from '@/components/HomepageSummaryCards'
+import { defaultHomepageSettings, validateHomepageSettings, type HomepageSettings } from '@/lib/homepage-settings'
 import { invalidateRequestCache } from '@/lib/client-request-cache'
 import Link from 'next/link'
 import {
   Baby as BabyIcon,
   PlusCircle,
-  Droplets,
-  Milk,
-  Pill,
   Scale,
   Thermometer,
   ChevronRight,
@@ -69,7 +69,7 @@ interface HealthRecord {
   recordType: 'health'
 }
 
-interface DailyStats {
+export interface DailyStats {
   breastFeedingCount: number
   totalBreastDuration: number
   breastBottleCount: number
@@ -101,6 +101,7 @@ interface Props {
   initialTodayRecords?: FeedingRecord[]
   initialTodayHealthRecords?: HealthRecord[]
   initialRecentMemos?: DashboardMemo[]
+  initialHomepageSettings?: HomepageSettings
   initialQuickRecordKeys?: QuickRecordKey[]
 }
 
@@ -151,9 +152,12 @@ export default function Dashboard({
   initialTodayRecords = [],
   initialTodayHealthRecords = [],
   initialRecentMemos = [],
+  initialHomepageSettings = defaultHomepageSettings(),
   initialQuickRecordKeys = [...DEFAULT_QUICK_RECORD_KEYS],
 }: Props) {
   const { openComposer } = useRecordComposer()
+  const [homepageSettings, setHomepageSettings] = useState(initialHomepageSettings)
+  const todayRequestIdRef = useRef(0)
   const [babies, setBabies] = useState<Baby[]>(initialBabies)
   const [internalSelectedBabyId, setInternalSelectedBabyId] = useState<string | null>(initialBabies[0]?.id ?? null)
   const [todayRecords, setTodayRecords] = useState<FeedingRecord[]>(initialTodayRecords)
@@ -164,7 +168,7 @@ export default function Dashboard({
       : null,
   )
   const [loading, setLoading] = useState(initialBabies.length === 0)
-  const [freshFetch] = useState(() => {
+  const [freshFetch, setFreshFetch] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedTs = window.sessionStorage.getItem('record_saved_ts')
       if (savedTs && Date.now() - Number(savedTs) < 10000) {
@@ -233,41 +237,51 @@ export default function Dashboard({
     }
   }, [resolvedSelectedBabyId, handleSelectBaby])
 
-  const fetchTodayData = useCallback(async () => {
+  const fetchTodayData = useCallback(async (force = false) => {
     if (!resolvedSelectedBabyId) return
-
-    if (hasInitialTodayData && resolvedSelectedBabyId === preloadedBabyIdRef.current) {
+    const requestId = ++todayRequestIdRef.current
+    if (!force && hasInitialTodayData && resolvedSelectedBabyId === preloadedBabyIdRef.current) {
       setTodayRecords(initialTodayRecords)
       setTodayHealthRecords(initialTodayHealthRecords)
       setStats(buildDailyStats(initialTodayRecords, initialTodayHealthRecords))
       return
     }
-    
     try {
       const today = getBeijingToday()
-      
-      const feedingResponse = await fetch(
-        `/api/feeding?babyId=${resolvedSelectedBabyId}&date=${today}`
-      )
-      const feedingDataRaw = feedingResponse.ok ? await feedingResponse.json() : []
-      const feedingData: FeedingRecord[] = Array.isArray(feedingDataRaw)
-        ? feedingDataRaw.map(r => ({ ...r, recordType: 'feeding' as const }))
-        : []
+      const [feedingResponse, healthResponse] = await Promise.all([
+        fetch(`/api/feeding?babyId=${resolvedSelectedBabyId}&date=${today}`, { cache: 'no-store' }),
+        fetch(`/api/health?babyId=${resolvedSelectedBabyId}&date=${today}`, { cache: 'no-store' }),
+      ])
+      if (!feedingResponse.ok || !healthResponse.ok) throw new Error('获取今日数据失败')
+      const [feeding, health] = await Promise.all([feedingResponse.json(), healthResponse.json()])
+      if (todayRequestIdRef.current !== requestId) return
+      const feedingData: FeedingRecord[] = Array.isArray(feeding) ? feeding.map(r => ({ ...r, recordType: 'feeding' })) : []
+      const healthData: HealthRecord[] = Array.isArray(health) ? health.map(r => ({ ...r, recordType: 'health' })) : []
       setTodayRecords(feedingData)
-
-      const healthResponse = await fetch(
-        `/api/health?babyId=${resolvedSelectedBabyId}&date=${today}`
-      )
-      const healthDataRaw = healthResponse.ok ? await healthResponse.json() : []
-      const healthData: HealthRecord[] = Array.isArray(healthDataRaw)
-        ? healthDataRaw.map(r => ({ ...r, recordType: 'health' as const }))
-        : []
       setTodayHealthRecords(healthData)
       setStats(buildDailyStats(feedingData, healthData))
-    } catch (error) {
-      console.error('获取今日数据失败:', error)
-    }
+    } catch (error) { console.error('获取今日数据失败:', error) }
   }, [resolvedSelectedBabyId, hasInitialTodayData, initialTodayHealthRecords, initialTodayRecords])
+
+  useEffect(() => {
+    let active = true
+    void fetch('/api/user/homepage', { cache: 'no-store' }).then(async response => {
+      if (!response.ok) return
+      const settings = await response.json()
+      if (active && validateHomepageSettings(settings) === null) setHomepageSettings(settings)
+    }).catch(error => console.error('获取首页设置失败:', error))
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    const changed = (event: Event) => {
+      if ((event as CustomEvent<{ babyId: string }>).detail?.babyId !== resolvedSelectedBabyId) return
+      setFreshFetch(true)
+      void fetchTodayData(true)
+    }
+    window.addEventListener(RECORDS_CHANGED_EVENT, changed)
+    return () => window.removeEventListener(RECORDS_CHANGED_EVENT, changed)
+  }, [resolvedSelectedBabyId, fetchTodayData])
 
   useEffect(() => {
     if (initialBabies.length > 0) {
@@ -349,10 +363,8 @@ export default function Dashboard({
 
   const selectedBaby = babies.find(b => b.id === resolvedSelectedBabyId)
 
-  return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-4">
-
-      {selectedBaby && (
+  const sectionContent = {
+    BABY: (selectedBaby && (
         <div className="bg-white rounded-card p-4 sm:p-6 shadow-card border border-blue-50">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-pink-100 to-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -367,60 +379,11 @@ export default function Dashboard({
             </div>
           </div>
         </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-card p-3 shadow-card border border-blue-50">
-          <div className="flex items-center justify-between mb-1.5">
-            <Droplets size={20} className="text-pink-500" />
-            <span className="text-xs text-slate-400 font-medium">母乳</span>
-          </div>
-          <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            {(stats?.breastFeedingCount || 0) + (stats?.breastBottleCount || 0)}
-          </p>
-          <p className="text-xs text-slate-500">
-            亲喂{stats?.breastFeedingCount || 0}次 · {stats?.totalBreastDuration || 0}分钟
-          </p>
-          {(stats?.breastBottleCount || 0) > 0 && (
-            <p className="text-xs text-slate-500">
-              瓶喂{stats?.breastBottleCount || 0}次（{stats?.totalBreastMilkAmount || 0}ml）
-            </p>
-          )}
-        </div>
-
-        <div className="bg-white rounded-card p-3 shadow-card border border-blue-50">
-          <div className="flex items-center justify-between mb-1.5">
-            <Milk size={20} className="text-blue-500" />
-            <span className="text-xs text-slate-400 font-medium">奶粉</span>
-          </div>
-          <p className="text-2xl font-extrabold text-slate-900 tracking-tight">{stats?.formulaCount || 0}</p>
-          <p className="text-xs text-slate-500">次 · {stats?.totalFormulaAmount || 0}ml</p>
-        </div>
-
-        <div className="bg-white rounded-card p-3 shadow-card border border-blue-50">
-          <div className="flex items-center justify-between mb-1.5">
-            <Pill size={20} className="text-orange-500" />
-            <span className="text-xs text-slate-400 font-medium">营养补充</span>
-          </div>
-          <p className="text-lg font-extrabold text-slate-900">
-            AD {stats?.adGiven ? '✓' : '○'} · 维D {stats?.vitaminDGiven ? '✓' : '○'}
-          </p>
-          <p className="text-xs text-slate-500">今日补充状态</p>
-        </div>
-
-        <div className="bg-white rounded-card p-3 shadow-card border border-blue-50">
-          <div className="flex items-center justify-between mb-1.5">
-            <BabyIcon size={20} className="text-amber-500" />
-            <span className="text-xs text-slate-400 font-medium">大小便</span>
-          </div>
-          <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            {stats?.peeCount || 0} / {stats?.poopCount || 0}
-          </p>
-          <p className="text-xs text-slate-500">小便 / 大便</p>
-        </div>
-      </div>
-
-      {stats && (stats.temperature || stats.weight || stats.height) && (
+      )),
+    SUMMARY: homepageSettings.cards.length > 0 ? <HomepageSummaryCards cards={homepageSettings.cards} stats={stats} onRecord={key => {
+      if (resolvedSelectedBabyId) openComposer(key, { patch: { babyId: resolvedSelectedBabyId } })
+    }} /> : null,
+    HEALTH: (stats && (stats.temperature || stats.weight || stats.height) && (
         <div className="bg-white rounded-card p-3 shadow-card border border-blue-50">
           <h3 className="text-xs font-medium text-gray-500 mb-2">今日健康数据</h3>
           <div className="flex flex-wrap gap-2">
@@ -444,10 +407,8 @@ export default function Dashboard({
             )}
           </div>
         </div>
-      )}
-
-      {/* 近3天备忘提醒 - 紧凑控件 */}
-      {initialRecentMemos.length > 0 && (
+      )),
+    MEMOS: (initialRecentMemos.length > 0 && (
         <div className="bg-white rounded-card p-3 shadow-card border border-indigo-50">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
@@ -491,9 +452,8 @@ export default function Dashboard({
             })}
           </div>
         </div>
-      )}
-
-      <div className="bg-white rounded-card p-4 shadow-card border border-blue-50">
+      )),
+    QUICK_RECORDS: (<div className="bg-white rounded-card p-4 shadow-card border border-blue-50">
         <h3 className="text-base font-bold text-slate-900 mb-3">快捷记录</h3>
         <div className="grid grid-cols-4 gap-2">
           {initialQuickRecordKeys.map(key => {
@@ -514,9 +474,8 @@ export default function Dashboard({
             )
           })}
         </div>
-      </div>
-
-      <div className="bg-white rounded-card p-4 shadow-card border border-blue-50">
+      </div>),
+    TODAY_RECORDS: (<div className="bg-white rounded-card p-4 shadow-card border border-blue-50">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-bold text-slate-900">今日记录</h3>
           <Link href="/timeline" className="text-sm text-blue-600 hover:text-blue-700 flex items-center">
@@ -563,7 +522,13 @@ export default function Dashboard({
               })}
           </div>
         )}
-      </div>
+      </div>),
+  }
+  return (
+    <div className="mx-auto max-w-4xl space-y-4 px-3 py-4 sm:px-4">
+      {homepageSettings.sections.some(key => !!sectionContent[key]) ? homepageSettings.sections.map(key => (
+        sectionContent[key] ? <section key={key} data-home-section={key}>{sectionContent[key]}</section> : null
+      )) : <div className="rounded-card bg-white p-6 text-center text-slate-500"><p>当前没有可展示的首页内容</p><a href="/settings/homepage" className="mt-3 inline-block text-blue-700">管理首页展示</a></div>}
     </div>
   )
 }

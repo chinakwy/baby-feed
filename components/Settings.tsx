@@ -466,6 +466,9 @@ export default function SettingsComponent({ userName, userEmail, currentVersion,
         </div>
 
         <div className="space-y-2 pt-2 border-t border-gray-100">
+          <button type="button" onClick={() => router.push('/settings/homepage')} className="mobile-touch-target group flex w-full items-center justify-between rounded-xl px-2 py-3 text-left transition hover:bg-gray-50">
+            <span className="flex items-center gap-3"><LayoutGrid size={18} className="text-slate-400 group-hover:text-blue-500" /><span className="text-slate-700">首页展示管理</span></span><span className="text-sm text-slate-400">›</span>
+          </button>
           <button
             onClick={() => router.push('/settings/quick-records')}
             className="mobile-touch-target w-full flex items-center justify-between rounded-xl px-2 py-3 text-left transition group hover:bg-gray-50"

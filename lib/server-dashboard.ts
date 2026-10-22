@@ -1,3 +1,4 @@
+import { defaultHomepageSettings, parseHomepageSettings, type HomepageSettings } from '@/lib/homepage-settings'
 import { prisma } from '@/lib/prisma'
 import { getBeijingToday } from '@/lib/time'
 import { getBeijingDayRange } from '@/lib/api-helpers'
@@ -60,6 +61,7 @@ export interface PreloadedDashboardData {
   initialTodayRecords: PreloadedDashboardFeedingRecord[]
   initialTodayHealthRecords: PreloadedDashboardHealthRecord[]
   initialRecentMemos: PreloadedDashboardMemo[]
+  initialHomepageSettings: HomepageSettings
   initialQuickRecordKeys: QuickRecordKey[]
 }
 
@@ -72,6 +74,7 @@ export async function getPreloadedDashboardData(): Promise<PreloadedDashboardDat
       initialTodayRecords: [],
       initialTodayHealthRecords: [],
       initialRecentMemos: [],
+      initialHomepageSettings: defaultHomepageSettings(),
       initialQuickRecordKeys: [...DEFAULT_QUICK_RECORD_KEYS],
     }
   }
@@ -80,10 +83,11 @@ export async function getPreloadedDashboardData(): Promise<PreloadedDashboardDat
     getPreloadedBabies(),
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { quickRecordSettings: true },
+      select: { quickRecordSettings: true, homepageSettings: true },
     }),
   ])
   const initialSelectedBabyId = initialBabies.activeBabyId || initialBabies.babies[0]?.id || null
+  const initialHomepageSettings = parseHomepageSettings(user?.homepageSettings)
   const initialQuickRecordKeys = parseQuickRecordSettings(user?.quickRecordSettings)
 
   if (!initialSelectedBabyId) {
@@ -93,6 +97,7 @@ export async function getPreloadedDashboardData(): Promise<PreloadedDashboardDat
       initialTodayRecords: [],
       initialTodayHealthRecords: [],
       initialRecentMemos: [],
+      initialHomepageSettings,
       initialQuickRecordKeys,
     }
   }
@@ -230,6 +235,7 @@ export async function getPreloadedDashboardData(): Promise<PreloadedDashboardDat
       completed: memo.completed,
       completedAt: memo.completedAt?.toISOString() ?? null,
     })),
+    initialHomepageSettings,
     initialQuickRecordKeys,
   }
 }

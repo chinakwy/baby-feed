@@ -8,6 +8,7 @@ export default async function Home() {
     initialTodayRecords,
     initialTodayHealthRecords,
     initialRecentMemos,
+    initialHomepageSettings,
     initialQuickRecordKeys,
   } = await getPreloadedDashboardData()
 
@@ -18,6 +19,7 @@ export default async function Home() {
       initialTodayRecords={initialTodayRecords}
       initialTodayHealthRecords={initialTodayHealthRecords}
       initialRecentMemos={initialRecentMemos}
+      initialHomepageSettings={initialHomepageSettings}
       initialQuickRecordKeys={initialQuickRecordKeys}
     />
   )

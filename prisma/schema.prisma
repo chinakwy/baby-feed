@@ -26,6 +26,7 @@ model User {
   webhookEvents       WebhookEvent[]
   reminderRules       ReminderRule[]
   reminderExecutions  ReminderExecution[]
+  deletedRecords      DeletedRecord[]
   reminderSettings    String?
   quickRecordSettings String?
 }
@@ -62,6 +63,7 @@ model Baby {
   feedingRecords FeedingRecord[]
   healthRecords  HealthRecord[]
   toothEruptions ToothEruption[]
+  deletedRecords DeletedRecord[]
   memos          Memo[]
   reminderRules  ReminderRule[]
 
@@ -299,4 +301,19 @@ model ReminderExecution {
   @@index([ruleId, evaluatedAt])
   @@index([userId, evaluatedAt])
   @@index([status, createdAt])
+}
+
+// Local trial addition: recover individual feeding/health records without overwriting the database.
+model DeletedRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  babyId    String
+  recordId  String
+  kind      String
+  snapshot  String
+  deletedAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  baby Baby @relation(fields: [babyId, userId], references: [id, createdBy], onDelete: Cascade)
+
+  @@index([userId, deletedAt])
 }

@@ -536,6 +536,10 @@ export default function SettingsComponent({ userName, userEmail, currentVersion,
         </div>
       </div>
 
+      <a href="/trash" className="block rounded-card border border-blue-50 bg-white p-5 font-semibold text-blue-700 shadow-card">
+        回收站 <span className="ml-2 text-sm font-normal text-slate-500">恢复误删的喂养与健康记录</span>
+      </a>
+
       {/* 宝宝管理 */}
       <div className="bg-white rounded-card p-5 shadow-card border border-blue-50 sm:p-6 lg:p-7">
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

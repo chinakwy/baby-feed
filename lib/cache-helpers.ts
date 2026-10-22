@@ -5,6 +5,13 @@ import { invalidateRequestCache } from '@/lib/client-request-cache'
  * 在创建/更新/删除喂养或健康记录后调用
  */
 export function invalidateRecordRelatedCaches(babyId: string) {
+  if (typeof window !== 'undefined') {
+    try {
+      window.sessionStorage.setItem('record_saved_ts', String(Date.now()))
+    } catch {
+      // Cache invalidation must still work when the browser blocks storage.
+    }
+  }
   invalidateRequestCache(`/api/babies`)
   invalidateRequestCache(`/api/feeding?babyId=${babyId}`)
   invalidateRequestCache(`/api/health?babyId=${babyId}`)

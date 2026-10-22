@@ -1,3 +1,5 @@
+import { revalidatePath } from 'next/cache'
+import { archiveDeletedRecord } from '@/lib/deleted-records'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -123,7 +125,9 @@ export async function PUT(
       adGiven: adGiven === undefined ? existingRecord.adGiven : adGiven,
       vitaminDGiven: vitaminDGiven === undefined ? existingRecord.vitaminDGiven : vitaminDGiven,
       customName: customName === undefined ? existingRecord.customName : customName,
-      toothCodes: toothCodes === undefined ? existingRecord.toothEruptions.map(item => item.toothCode) : toothCodes,
+      toothCodes: nextType === 'TOOTH_ERUPTION'
+        ? (toothCodes === undefined ? existingRecord.toothEruptions.map(item => item.toothCode) : toothCodes)
+        : null,
       sleepStartTime: body.sleepStartTime === undefined ? (existingRecord.sleepStartTime ? existingRecord.sleepStartTime.toISOString() : null) : body.sleepStartTime,
       sleepEndTime: body.sleepEndTime === undefined ? (existingRecord.sleepEndTime ? existingRecord.sleepEndTime.toISOString() : null) : body.sleepEndTime,
       sleepQuality: body.sleepQuality === undefined ? existingRecord.sleepQuality : body.sleepQuality,
@@ -253,6 +257,7 @@ export async function PUT(
     await emitHealthUpdated(session.user.id, existingRecord, record, record.baby).catch(error => {
       logError('Failed to emit health updated webhook', error)
     })
+    for (const path of ['/', '/timeline', '/stats']) revalidatePath(path)
     return NextResponse.json(record, { headers: noStoreHeaders })
   } catch (error) {
     if (error instanceof Error && error.message === 'RECORD_UPDATE_CONFLICT') {
@@ -323,6 +328,7 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async tx => {
+      await archiveDeletedRecord(tx, session.user.id, 'health', existingRecord)
       const deleted = await tx.healthRecord.deleteMany({
         where: { id, babyId, createdBy: session.user.id, updatedAt: existingRecord.updatedAt },
       })
@@ -347,6 +353,7 @@ export async function DELETE(
     await emitHealthDeleted(session.user.id, existingRecord).catch(error => {
       logError('Failed to emit health deleted webhook', error)
     })
+    for (const path of ['/', '/timeline', '/stats']) revalidatePath(path)
     return NextResponse.json({ success: true }, { headers: noStoreHeaders })
   } catch (error) {
     if (error instanceof Error && error.message === 'RECORD_UPDATE_CONFLICT') {

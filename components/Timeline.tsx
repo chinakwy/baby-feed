@@ -7,6 +7,7 @@ import { format, isToday, isYesterday } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { formatBeijingTime, getBeijingHour } from '@/lib/time'
 import { splitDurationByBeijingDay } from '@/lib/api-helpers'
+import { invalidateRecordRelatedCaches } from '@/lib/cache-helpers'
 import { dedupeRequest, invalidateRequestCache } from '@/lib/client-request-cache'
 import type { PreloadedTimelineRecord } from '@/lib/server-timeline'
 import type { PrimaryToothCode } from '@/lib/tooth-eruptions'
@@ -172,7 +173,7 @@ function DeleteConfirmDialog({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
         <h3 className="text-lg font-bold text-gray-900 mb-2">确认删除</h3>
-        <p className="text-gray-600 mb-6">确定要删除这条记录吗？此操作不可恢复。</p>
+        <p className="text-gray-600 mb-6">这条记录将移至回收站，可在“设置 → 回收站”中恢复。</p>
         <div className="flex gap-3">
           <button
             type="button"
@@ -302,7 +303,7 @@ export default function TimelineComponent({
   const latestRequestKeyRef = useRef<string | null>(null)
   const datePickerWrapperRef = useRef<HTMLDivElement | null>(null)
   const calendarInputRef = useRef<HTMLInputElement | null>(null)
-  const [freshFetch] = useState(() => {
+  const [freshFetch, setFreshFetch] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedTs = window.sessionStorage.getItem('record_saved_ts')
       if (savedTs && Date.now() - Number(savedTs) < 10000) {
@@ -402,6 +403,7 @@ export default function TimelineComponent({
     }
 
     if (availableDates.includes(currentDateStr)) {
+      if (nextValidDates) await fetchRecordsForDate(babyId, currentDateStr)
       return
     }
 
@@ -528,13 +530,17 @@ export default function TimelineComponent({
       const response = await fetch(endpoint, { method: 'DELETE' })
       
       if (response.ok) {
-        invalidateRequestCache(`timeline:${selectedBabyId}:`)
-        invalidateRequestCache(buildTimelineDatesCacheKey(selectedBabyId))
+        invalidateRecordRelatedCaches(selectedBabyId)
+        setFreshFetch(true)
         const nextValidDates = await fetchValidDates(selectedBabyId)
         await syncDateToNearestValid(selectedBabyId, nextValidDates)
+      } else {
+        const error = await response.json().catch(() => null)
+        alert(error?.error || '删除失败，请重试')
       }
     } catch (error) {
       console.error('删除失败:', error)
+      alert('删除失败，请重试')
     } finally {
       setDeleteTarget(null)
     }
@@ -567,8 +573,8 @@ export default function TimelineComponent({
 
       if (response.ok) {
         setEditingRecord(null)
-        invalidateRequestCache(`timeline:${selectedBabyId}:`)
-        invalidateRequestCache(buildTimelineDatesCacheKey(selectedBabyId))
+        invalidateRecordRelatedCaches(selectedBabyId)
+        setFreshFetch(true)
         const nextValidDates = await fetchValidDates(selectedBabyId)
         await syncDateToNearestValid(selectedBabyId, nextValidDates)
       } else {

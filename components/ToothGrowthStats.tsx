@@ -259,7 +259,7 @@ export default function ToothGrowthStats({ records, babyId, onRecordsChanged }: 
       {deleteTarget ? (
         <ConfirmDialog
           title="删除长牙记录"
-          message={`确定要删除 ${formatToothNames(deleteTarget.toothEruptions.map(tooth => tooth.toothCode))} 的萌出记录吗？此操作不可恢复。`}
+          message={`确定要删除 ${formatToothNames(deleteTarget.toothEruptions.map(tooth => tooth.toothCode))} 的萌出记录吗？删除后可在“设置 → 回收站”恢复。`}
           confirmLabel="删除"
           loadingLabel="删除中..."
           variant="danger"

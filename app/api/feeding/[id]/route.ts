@@ -1,3 +1,5 @@
+import { revalidatePath } from 'next/cache'
+import { archiveDeletedRecord } from '@/lib/deleted-records'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -178,6 +180,7 @@ export async function PUT(
       logError('Failed to emit feeding updated webhook', error)
     })
 
+    for (const path of ['/', '/timeline', '/stats']) revalidatePath(path)
     return NextResponse.json(record, { headers: noStoreHeaders })
   } catch (error) {
     if (error instanceof Error && error.message === 'RECORD_UPDATE_CONFLICT') {
@@ -244,6 +247,7 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async tx => {
+      await archiveDeletedRecord(tx, session.user.id, 'feeding', existingRecord)
       const deleted = await tx.feedingRecord.deleteMany({
         where: { id, babyId, createdBy: session.user.id, updatedAt: existingRecord.updatedAt },
       })
@@ -261,6 +265,7 @@ export async function DELETE(
       logError('Failed to emit feeding deleted webhook', error)
     })
 
+    for (const path of ['/', '/timeline', '/stats']) revalidatePath(path)
     return NextResponse.json({ success: true }, { headers: noStoreHeaders })
   } catch (error) {
     if (error instanceof Error && error.message === 'RECORD_UPDATE_CONFLICT') {

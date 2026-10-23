@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { getBeijingNow, toBeijingISO } from '@/lib/time'
 import { invalidateRecordRelatedCaches } from '@/lib/cache-helpers'
 import { buildHealthRecordPayload, buildVaccineSuggestions, findSelectedVaccineSuggestion, type HealthFieldValues, type HealthType, type VaccineSuggestion } from '@/lib/health-records'
+import { readSupplementDraftEntries, type SupplementEntry } from '@/lib/supplements'
 import HealthRecordFields, { getHealthFieldValidationMessage } from '@/components/HealthRecordFields'
 import RecordActionBar from '@/components/RecordActionBar'
 import RecordTabBar, { type ActiveTab } from '@/components/RecordTabBar'
@@ -49,6 +50,7 @@ interface HealthDraft {
   diaperType: 'PEE' | 'POOP' | 'BOTH'
   diaperStatus: string
   adGiven: boolean
+  supplements?: SupplementEntry[]
   vitaminDGiven: boolean
   customName: string
   sleepStartTime: string
@@ -81,7 +83,7 @@ const emptyHealthDraft: HealthDraft = {
   vaccineTotalDoses: '',
   diaperType: 'PEE',
   diaperStatus: '',
-  adGiven: true,
+  adGiven: false,
   vitaminDGiven: false,
   customName: '',
   sleepStartTime: '',
@@ -121,7 +123,8 @@ export default function HealthForm({
   const [selectedVaccineSuggestionKey, setSelectedVaccineSuggestionKey] = useState('')
   const [diaperType, setDiaperType] = useState<'PEE' | 'POOP' | 'BOTH'>('PEE')
   const [diaperStatus, setDiaperStatus] = useState('')
-  const [adGiven, setAdGiven] = useState(true)
+  const [adGiven, setAdGiven] = useState(false)
+  const [supplements, setSupplements] = useState<SupplementEntry[] | undefined>(undefined)
   const [vitaminDGiven, setVitaminDGiven] = useState(false)
   const [customName, setCustomName] = useState('')
   const [sleepStartTime, setSleepStartTime] = useState('')
@@ -235,6 +238,7 @@ export default function HealthForm({
       if (typeof parsedDraft.adGiven === 'boolean') {
         setAdGiven(parsedDraft.adGiven)
       }
+      if (Array.isArray(parsedDraft.supplements)) setSupplements(readSupplementDraftEntries(parsedDraft.supplements))
       if (typeof parsedDraft.vitaminDGiven === 'boolean') {
         setVitaminDGiven(parsedDraft.vitaminDGiven)
       }
@@ -278,6 +282,7 @@ export default function HealthForm({
         diaperStatus,
         adGiven,
         vitaminDGiven,
+        supplements,
         customName,
         sleepStartTime,
         sleepEndTime,
@@ -300,6 +305,7 @@ export default function HealthForm({
         !nextDraft.diaperStatus &&
         nextDraft.adGiven === emptyHealthDraft.adGiven &&
         nextDraft.vitaminDGiven === emptyHealthDraft.vitaminDGiven &&
+        !nextDraft.supplements?.length &&
         !nextDraft.customName &&
         !nextDraft.sleepStartTime &&
         !nextDraft.sleepEndTime &&
@@ -315,7 +321,7 @@ export default function HealthForm({
     } catch (error) {
       console.error('保存健康草稿失败:', error)
     }
-  }, [type, weight, height, temperature, medicationName, medicationDose, vaccineName, vaccineManufacturer, vaccineDoseNumber, vaccineTotalDoses, diaperType, diaperStatus, adGiven, vitaminDGiven, customName, sleepStartTime, sleepEndTime, sleepQuality, toothCodes])
+  }, [type, weight, height, temperature, medicationName, medicationDose, vaccineName, vaccineManufacturer, vaccineDoseNumber, vaccineTotalDoses, diaperType, diaperStatus, adGiven, vitaminDGiven, supplements, customName, sleepStartTime, sleepEndTime, sleepQuality, toothCodes])
 
   useEffect(() => {
     if (!submitError) {
@@ -324,7 +330,7 @@ export default function HealthForm({
 
     setSubmitError('')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [babyId, type, weight, height, temperature, medicationName, medicationDose, vaccineName, vaccineManufacturer, vaccineDoseNumber, vaccineTotalDoses, diaperType, diaperStatus, adGiven, vitaminDGiven, customName, sleepStartTime, sleepEndTime, sleepQuality, toothCodes, recordedAt, notes])
+  }, [babyId, type, weight, height, temperature, medicationName, medicationDose, vaccineName, vaccineManufacturer, vaccineDoseNumber, vaccineTotalDoses, diaperType, diaperStatus, adGiven, vitaminDGiven, supplements, customName, sleepStartTime, sleepEndTime, sleepQuality, toothCodes, recordedAt, notes])
 
   useEffect(() => {
     if (type !== 'VACCINE' || !babyId) {
@@ -416,6 +422,7 @@ export default function HealthForm({
       diaperStatus,
       adGiven,
       vitaminDGiven,
+        supplements,
       customName,
       sleepStartTime,
       sleepEndTime,
@@ -438,6 +445,7 @@ export default function HealthForm({
     diaperStatus,
     adGiven,
     vitaminDGiven,
+    supplements,
     customName,
     sleepStartTime,
     sleepEndTime,
@@ -515,7 +523,7 @@ export default function HealthForm({
     { key: 'WEIGHT', label: '体重', icon: Scale, color: 'green' },
     { key: 'HEIGHT', label: '身高', icon: Ruler, color: 'blue' },
     { key: 'TEMPERATURE', label: '体温', icon: Thermometer, color: 'red' },
-    { key: 'AD_VITAMIN', label: 'AD', icon: Pill, color: 'orange' },
+    { key: 'AD_VITAMIN', label: '营养补充', icon: Pill, color: 'orange' },
     { key: 'MEDICATION', label: '服药', icon: Pill, color: 'purple' },
     { key: 'VACCINE', label: '疫苗', icon: Syringe, color: 'teal' },
     { key: 'DIAPER', label: '大小便', icon: BabyIcon, color: 'amber' },
@@ -606,6 +614,7 @@ export default function HealthForm({
             setDiaperStatus,
             setAdGiven,
             setVitaminDGiven,
+            setSupplements,
             setCustomName,
             setSleepStartTime,
             setSleepEndTime: handleSleepEndTimeChange,

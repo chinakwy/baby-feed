@@ -69,3 +69,24 @@ cookies.txt
 .claude/settings.local.json
 CLAUDE.md
 !.claude/skills/*
+# Local family data, uploads, deployment configuration and backups
+/runtime/
+/backups/
+/evaluation/
+/data/
+/uploads/
+/public/uploads/
+/public/avatars/
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.key
+*.p12
+*.pfx
+*.cer
+*.crt

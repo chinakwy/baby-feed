@@ -183,11 +183,11 @@ textarea {
 
 /* Design system gradient utilities */
 .gradient-primary {
-  background: linear-gradient(135deg, #3b82f6, #06b6d4);
+  background: linear-gradient(135deg, rgb(var(--theme-500)), var(--theme-gradient-end));
 }
 
 .gradient-icon {
-  background: linear-gradient(135deg, #3b82f6, #f472b6);
+  background: linear-gradient(135deg, rgb(var(--theme-500)), rgb(var(--theme-300)));
 }
 
 .gradient-breast {
@@ -224,7 +224,7 @@ textarea {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: linear-gradient(160deg, #f0f9ff 0%, #e0f2fe 45%, #fce7f3 100%);
+  background: linear-gradient(160deg, rgb(var(--theme-50)) 0%, rgb(var(--theme-100)) 45%, rgb(var(--theme-50)) 100%);
   transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
@@ -322,8 +322,8 @@ textarea {
 .record-composer .composer-fields input:not([type="checkbox"]):focus,
 .record-composer .composer-fields textarea:focus,
 .record-composer .composer-fields select:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+  border-color: rgb(var(--theme-500));
+  box-shadow: 0 0 0 3px rgb(var(--theme-500) / 0.14);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -341,7 +341,7 @@ textarea {
 .auth-bg {
   min-height: 100vh;
   min-height: 100dvh;
-  background: linear-gradient(160deg, #f0f9ff 0%, #e0f2fe 40%, #fce7f3 100%);
+  background: linear-gradient(160deg, rgb(var(--theme-50)) 0%, rgb(var(--theme-100)) 40%, rgb(var(--theme-50)) 100%);
   background-attachment: scroll;
   background-size: 100% 100%;
 }

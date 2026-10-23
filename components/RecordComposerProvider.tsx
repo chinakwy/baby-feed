@@ -48,9 +48,11 @@ import {
 interface OpenComposerOptions {
   patch?: DraftPatch
   scope?: 'feeding' | 'health'
+  allowedTypes?: ComposerRecordType[]
 }
 
 interface RecordComposerContextValue {
+  activeTimer: ActiveRecordTimer | null
   isOpen: boolean
   openComposer: (type?: ComposerRecordType | null, options?: OpenComposerOptions) => void
   closeComposer: () => void
@@ -107,6 +109,8 @@ export function RecordComposerProvider({ children }: { children: ReactNode }) {
   const [toastError, setToastError] = useState('')
   const [undoing, setUndoing] = useState(false)
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+  const [launcherTypes, setLauncherTypes] = useState<ComposerRecordType[] | null>(null)
+  const [launcherPatch, setLauncherPatch] = useState<DraftPatch | undefined>(undefined)
   const [launcherScope, setLauncherScope] = useState<'feeding' | 'health' | null>(null)
   const [ownedActiveTimer, setOwnedActiveTimer] = useState<{ userId: string; timer: ActiveRecordTimer } | null>(null)
   const [timerNow, setTimerNow] = useState(() => Date.now())
@@ -251,6 +255,8 @@ export function RecordComposerProvider({ children }: { children: ReactNode }) {
     setToastError('')
     setShowDiscardConfirm(false)
     setLauncherScope(options?.scope ?? null)
+    setLauncherTypes(options?.allowedTypes ?? null)
+    setLauncherPatch(options?.patch)
     setSelectedType(type)
     if (type) ensureDraft(type, options?.patch)
     setIsOpen(true)
@@ -459,18 +465,19 @@ export function RecordComposerProvider({ children }: { children: ReactNode }) {
   const selectedBaby = selectedDraft
     ? babies.find(baby => baby.id === selectedDraft.babyId) ?? babies[0]
     : null
-  const visibleRecordTypeGroups = launcherScope === 'feeding'
+  const scopedRecordTypeGroups = launcherScope === 'feeding'
     ? recordTypeGroups.filter(group => group.label === '喂养')
     : launcherScope === 'health'
       ? recordTypeGroups.filter(group => group.label !== '喂养')
       : recordTypeGroups
+  const visibleRecordTypeGroups = launcherTypes ? scopedRecordTypeGroups.map(group => ({...group, types: launcherTypes.flatMap(type => group.types.filter(item => item.type === type))})).filter(group => group.types.length > 0) : scopedRecordTypeGroups
   const launcherTitle = launcherScope === 'feeding'
     ? '喂养记录'
     : launcherScope === 'health'
       ? '健康记录'
       : '添加记录'
 
-  const contextValue = useMemo(() => ({ isOpen, openComposer, closeComposer }), [closeComposer, isOpen, openComposer])
+  const contextValue = useMemo(() => ({ isOpen, openComposer, closeComposer, activeTimer }), [closeComposer, isOpen, openComposer, activeTimer])
 
   return (
     <RecordComposerContext.Provider value={contextValue}>
@@ -594,7 +601,7 @@ export function RecordComposerProvider({ children }: { children: ReactNode }) {
                             const tone = toneClasses[item.tone]
                             const Icon = item.icon
                             return (
-                              <button key={item.type} type="button" onClick={() => { setSelectedType(item.type); ensureDraft(item.type) }} className="group flex min-h-[76px] flex-col items-center justify-center rounded-lg px-1.5 py-2 text-center transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                              <button key={item.type} type="button" onClick={() => { setSelectedType(item.type); ensureDraft(item.type, launcherPatch) }} className="group flex min-h-[76px] flex-col items-center justify-center rounded-lg px-1.5 py-2 text-center transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                                 <span className={`flex h-10 w-10 items-center justify-center rounded-lg ${tone.soft} transition-colors group-hover:ring-1 group-hover:ring-slate-200`}><Icon size={20} className={tone.icon} /></span>
                                 <span className="mt-1.5 text-xs font-medium text-slate-700 sm:text-sm">{item.label}</span>
                               </button>

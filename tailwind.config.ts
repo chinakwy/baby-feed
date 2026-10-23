@@ -10,14 +10,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        blue: Object.fromEntries([50,100,200,300,400,500,600,700,800,900,950].map(shade => [shade, `rgb(var(--theme-${shade}) / <alpha-value>)`])),
         background: "var(--background)",
         foreground: "var(--foreground)",
         brand: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          500: '#3b82f6',
-          600: '#2563eb',
+          50: "rgb(var(--theme-50) / <alpha-value>)",
+          100: "rgb(var(--theme-100) / <alpha-value>)",
+          200: "rgb(var(--theme-200) / <alpha-value>)",
+          500: "rgb(var(--theme-500) / <alpha-value>)",
+          600: "rgb(var(--theme-600) / <alpha-value>)",
         },
         accent: {
           breast: '#ec4899',
@@ -34,9 +35,9 @@ const config: Config = {
         'element': '12px',
       },
       boxShadow: {
-        'card': '0 2px 16px rgba(59, 130, 246, 0.08)',
-        'elevated': '0 4px 20px rgba(59, 130, 246, 0.25)',
-        'pressed': '0 1px 4px rgba(59, 130, 246, 0.12)',
+        'card': '0 2px 16px rgb(var(--theme-500) / 0.08)',
+        'elevated': '0 4px 20px rgb(var(--theme-500) / 0.25)',
+        'pressed': '0 1px 4px rgb(var(--theme-500) / 0.12)',
         'nav': '0 -2px 20px rgba(0, 0, 0, 0.06)',
       },
     },

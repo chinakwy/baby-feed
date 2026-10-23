@@ -1,3 +1,4 @@
+import type { SupplementEntry } from '@/lib/supplements'
 import type { LucideIcon } from 'lucide-react'
 import {
   Baby,
@@ -49,6 +50,7 @@ export interface ComposerDraft {
   diaperType: DiaperType
   diaperStatus: string
   adGiven: boolean
+  supplements?: SupplementEntry[]
   vitaminDGiven: boolean
   customName: string
   sleepStartTime: string
@@ -117,7 +119,7 @@ export const recordTypeGroups: RecordTypeGroup[] = [
     types: [
       { type: 'DIAPER', label: '尿布', description: '小便、大便或都有', icon: Baby, tone: 'amber' },
       { type: 'SLEEP', label: '睡眠', description: '开始计时或补记睡眠', icon: Moon, tone: 'violet' },
-      { type: 'AD_VITAMIN', label: 'AD / 维D', description: '分别记录两种补充剂', icon: Pill, tone: 'orange' },
+      { type: 'AD_VITAMIN', label: '营养补充', description: 'AD、维D、DHA及其他项目', icon: Pill, tone: 'orange' },
       { type: 'MEMO', label: '备忘', description: '添加待办或提醒', icon: CalendarCheck, tone: 'indigo' },
     ],
   },
@@ -216,7 +218,7 @@ export function createComposerDraft(babyId: string, eventTime: string): Composer
     vaccineTotalDoses: '',
     diaperType: 'PEE',
     diaperStatus: '',
-    adGiven: true,
+    adGiven: false,
     vitaminDGiven: false,
     customName: '',
     sleepStartTime: '',

@@ -1,3 +1,4 @@
+import { readRecordSupplements, type SupplementEntry } from '@/lib/supplements'
 import { toBeijingISO } from '@/lib/time'
 import type { PrimaryToothCode } from '@/lib/tooth-eruptions'
 
@@ -25,6 +26,7 @@ export interface HealthFieldValues {
   diaperType: DiaperType
   diaperStatus: string
   adGiven: boolean
+  supplements?: SupplementEntry[]
   vitaminDGiven: boolean
   customName: string
   sleepStartTime: string
@@ -53,6 +55,7 @@ export function buildHealthRecordPayload(type: HealthType, values: HealthFieldVa
     diaperStatus: null,
     adGiven: null,
     vitaminDGiven: null,
+    supplements: null,
     customName: null,
     sleepStartTime: null,
     sleepEndTime: null,
@@ -112,6 +115,7 @@ export function buildHealthRecordPayload(type: HealthType, values: HealthFieldVa
       ...basePayload,
       adGiven: values.adGiven,
       vitaminDGiven: values.vitaminDGiven,
+      supplements: readRecordSupplements(values),
     }
   }
 

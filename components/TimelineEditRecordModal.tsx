@@ -6,6 +6,7 @@ import { toBeijingDatetimeLocal, toBeijingISO } from '@/lib/time'
 import { buildFeedingRecordPayload, getBreastModeFromType, getFeedingValidationMessage, type BreastMode, type FeedingFieldValues, type FeedingType } from '@/lib/feeding-records'
 import { buildHealthRecordPayload, buildVaccineSuggestions, findSelectedVaccineSuggestion, type HealthFieldValues, type HealthType, type VaccineSuggestion } from '@/lib/health-records'
 import FeedingRecordFields from '@/components/FeedingRecordFields'
+import { readRecordSupplements, type SupplementEntry } from '@/lib/supplements'
 import HealthRecordFields, { getHealthFieldValidationMessage } from '@/components/HealthRecordFields'
 import RecordActionBar from '@/components/RecordActionBar'
 import { RecordNotesField, RecordTimeField } from '@/components/RecordMetaFields'
@@ -45,6 +46,7 @@ interface HealthRecord {
   diaperStatus?: string | null
   adGiven?: boolean | null
   vitaminDGiven?: boolean | null
+  supplements?: string | null
   customName?: string | null
   sleepStartTime?: string | null
   sleepEndTime?: string | null
@@ -102,7 +104,8 @@ export default function TimelineEditRecordModal({ record, onSave, onCancel, savi
   const [selectedVaccineSuggestionKey, setSelectedVaccineSuggestionKey] = useState('')
   const [diaperType, setDiaperType] = useState(healthRecord?.diaperType || 'PEE')
   const [diaperStatus, setDiaperStatus] = useState(healthRecord?.diaperStatus || '')
-  const [adGiven, setAdGiven] = useState(healthRecord?.adGiven ?? true)
+  const [adGiven, setAdGiven] = useState(healthRecord?.adGiven ?? false)
+  const [supplements, setSupplements] = useState<SupplementEntry[]>(() => readRecordSupplements(healthRecord || {}))
   const [vitaminDGiven, setVitaminDGiven] = useState(healthRecord?.vitaminDGiven ?? false)
   const [customName, setCustomName] = useState(healthRecord?.customName || '')
   const [sleepStartTime, setSleepStartTime] = useState(healthRecord?.sleepStartTime ? toBeijingDatetimeLocal(healthRecord.sleepStartTime) : '')
@@ -132,6 +135,7 @@ export default function TimelineEditRecordModal({ record, onSave, onCancel, savi
     diaperStatus,
     adGiven,
     vitaminDGiven,
+    supplements,
     customName,
     sleepStartTime,
     sleepEndTime,
@@ -356,6 +360,7 @@ export default function TimelineEditRecordModal({ record, onSave, onCancel, savi
                 setDiaperStatus,
                 setAdGiven,
                 setVitaminDGiven,
+                setSupplements,
                 setCustomName,
                 setSleepStartTime,
                 setSleepEndTime: handleSleepEndTimeChange,

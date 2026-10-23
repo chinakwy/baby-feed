@@ -1,3 +1,4 @@
+import { readRecordSupplements, formatSupplement } from '@/lib/supplements'
 import {
   Droplets,
   Milk,
@@ -48,6 +49,7 @@ export interface HealthRecordDisplay {
   diaperStatus?: string | null
   adGiven?: boolean | null
   vitaminDGiven?: boolean | null
+  supplements?: string | null
   customName?: string | null
   sleepStartTime?: string | null
   sleepEndTime?: string | null
@@ -131,7 +133,7 @@ export function getRecordTitle(record: DisplayRecord): string {
     }
     case 'AD_VITAMIN': {
       const health = record as HealthRecordDisplay
-      const supplements = [health.adGiven ? 'AD' : null, health.vitaminDGiven ? '维生素D' : null].filter(Boolean)
+      const supplements = readRecordSupplements(health).map(formatSupplement)
       if (supplements.length > 0) return `${supplements.join('、')}已补充`
       return health.adGiven === false ? 'AD滴剂未服用' : '营养补充记录'
     }

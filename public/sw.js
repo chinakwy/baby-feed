@@ -1,15 +1,15 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'baby-feed-v9'
+const CACHE_NAME = 'baby-feed-v10'
 const OFFLINE_URL = '/offline'
 
 // 预缓存的静态资源
 const PRECACHE_URLS = [
   '/offline',
   '/manifest.json',
-  '/icon.svg',
-  '/icons/icon-192x192.png?v=8',
-  '/icons/icon-512x512.png?v=8',
+  '/icons/ximilu-pearl-v1-64.png',
+  '/icons/ximilu-pearl-v1-192.png',
+  '/icons/ximilu-pearl-v1-512.png',
 ]
 
 // 安装事件：预缓存核心资源

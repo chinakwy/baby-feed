@@ -87,8 +87,8 @@ export default function Navbar() {
           <div className="flex justify-between h-14">
             <div className="flex items-center">
               <Link href="/" className="flex items-center space-x-2">
-                <Image src="/icon.svg" alt="" width={28} height={28} priority />
-                <span className="font-bold text-xl text-gray-900">Baby Feed</span>
+                <Image src="/icons/ximilu-pearl-v1-192.png" alt="" width={28} height={28} priority />
+                <span className="font-bold text-xl text-gray-900">西米露成长记</span>
               </Link>
             </div>
 
@@ -125,7 +125,7 @@ export default function Navbar() {
                     onTouchStart={() => prefetchRoute(item.href)}
                     className={`flex items-center space-x-1 px-4 py-2 rounded-lg transition ${
                       isActive
-                        ? 'bg-gradient-to-r from-blue-50 to-sky-50 text-blue-600 shadow-pressed'
+                        ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-600 shadow-pressed'
                         : 'text-gray-600 hover:bg-gray-50'
                     }`}
                   >
@@ -191,7 +191,7 @@ export default function Navbar() {
                 }`}
               >
                 <div className={`flex h-[30px] w-[44px] items-center justify-center rounded-[15px] ${
-                  isActive ? 'bg-gradient-to-br from-blue-50 to-sky-50' : ''
+                  isActive ? 'bg-gradient-to-br from-blue-50 to-blue-100' : ''
                 }`}>
                   <Icon size={20} className={isActive ? 'fill-blue-600 text-blue-600' : ''} />
                 </div>

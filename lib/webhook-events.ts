@@ -142,6 +142,7 @@ export interface HealthCreatedEventPayload extends WebhookEventPayload {
     diaperStatus?: string
     adGiven?: boolean
     vitaminDGiven?: boolean
+    supplements?: string | null
     customName?: string
     sleepStartTime?: string
     sleepEndTime?: string
@@ -185,6 +186,7 @@ export interface HealthUpdatedEventPayload extends WebhookEventPayload {
     diaperStatus?: string
     adGiven?: boolean
     vitaminDGiven?: boolean
+    supplements?: string | null
     customName?: string
     sleepStartTime?: string
     sleepEndTime?: string

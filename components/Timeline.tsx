@@ -1,4 +1,5 @@
 'use client'
+import { readRecordSupplements } from '@/lib/supplements'
 
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import TimelineEditRecordModal from '@/components/TimelineEditRecordModal'
@@ -56,6 +57,7 @@ interface HealthRecord {
   diaperStatus?: string | null
   adGiven?: boolean | null
   vitaminDGiven?: boolean | null
+  supplements?: string | null
   customName?: string | null
   sleepStartTime?: string | null
   sleepEndTime?: string | null
@@ -714,7 +716,7 @@ export default function TimelineComponent({
 
       if (record.type === 'AD_VITAMIN') {
         const healthRecord = record as HealthRecord
-        if (healthRecord.adGiven || healthRecord.vitaminDGiven) {
+        if (readRecordSupplements(healthRecord).length > 0) {
           hasSupplement = true
         }
       }

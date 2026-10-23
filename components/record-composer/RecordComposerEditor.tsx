@@ -16,6 +16,7 @@ import {
   Timer,
 } from 'lucide-react'
 import FeedingRecordFields from '@/components/FeedingRecordFields'
+import { readRecordSupplements, formatSupplement } from '@/lib/supplements'
 import HealthRecordFields, { getHealthFieldValidationMessage } from '@/components/HealthRecordFields'
 import { invalidateRecordRelatedCaches } from '@/lib/cache-helpers'
 import {
@@ -105,7 +106,7 @@ function buildSummary(type: ComposerRecordType, draft: ComposerDraft) {
     case 'DIAPER': return `尿布 · ${draft.diaperType === 'PEE' ? '小便' : draft.diaperType === 'POOP' ? '大便' : '都有'}`
     case 'SLEEP': return '睡眠记录'
     case 'AD_VITAMIN': {
-      const supplements = [draft.adGiven ? 'AD' : null, draft.vitaminDGiven ? '维生素D' : null].filter(Boolean)
+      const supplements = readRecordSupplements(draft).map(formatSupplement)
       return `营养补充 · ${supplements.join(' + ')}`
     }
     case 'WEIGHT': return `体重 · ${draft.weight}kg`
@@ -214,6 +215,7 @@ export default function RecordComposerEditor({
     diaperStatus: draft.diaperStatus,
     adGiven: draft.adGiven,
     vitaminDGiven: draft.vitaminDGiven,
+    supplements: draft.supplements,
     customName: draft.customName,
     sleepStartTime: draft.sleepStartTime,
     sleepEndTime: draft.sleepEndTime,
@@ -499,6 +501,7 @@ export default function RecordComposerEditor({
             setDiaperStatus: value => update({ diaperStatus: value }),
             setAdGiven: value => update({ adGiven: value }),
             setVitaminDGiven: value => update({ vitaminDGiven: value }),
+            setSupplements: value => update({ supplements: value }),
             setCustomName: value => update({ customName: value }),
             setSleepStartTime: value => update({ sleepStartTime: value }),
             setSleepEndTime: value => update({ sleepEndTime: value }),

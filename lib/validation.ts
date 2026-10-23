@@ -1,3 +1,4 @@
+import { validateSupplementEntries } from '@/lib/supplements'
 /**
  * 统一输入验证工具
  * 防止非法类型、极端数值、不合法枚举等通过 API 进入数据库
@@ -365,8 +366,12 @@ function validateHealthBusinessRules(body: Record<string, unknown>): ValidationR
     return { valid: false, error: '大小便记录需要填写尿布类型' }
   }
 
-  if (type === 'AD_VITAMIN' && body.adGiven !== true && body.vitaminDGiven !== true) {
-    return { valid: false, error: '请至少选择 AD 或维生素D' }
+  if (body.supplements != null) {
+    try { validateSupplementEntries(body.supplements) } catch (error) { return { valid: false, error: (error as Error).message } }
+  }
+
+  if (type === 'AD_VITAMIN' && (Array.isArray(body.supplements) ? body.supplements.length === 0 : body.adGiven !== true && body.vitaminDGiven !== true)) {
+    return { valid: false, error: '请至少选择一种营养补充项目' }
   }
 
   if (type === 'SLEEP' && !isProvided(body.sleepStartTime)) {

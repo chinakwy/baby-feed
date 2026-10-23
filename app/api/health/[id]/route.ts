@@ -1,3 +1,4 @@
+import { readRecordSupplements, validateSupplementEntries } from '@/lib/supplements'
 import { revalidatePath } from 'next/cache'
 import { archiveDeletedRecord } from '@/lib/deleted-records'
 import { NextRequest, NextResponse } from 'next/server'
@@ -123,6 +124,7 @@ export async function PUT(
       diaperType: diaperType === undefined ? existingRecord.diaperType : diaperType,
       diaperStatus: diaperStatus === undefined ? existingRecord.diaperStatus : diaperStatus,
       adGiven: adGiven === undefined ? existingRecord.adGiven : adGiven,
+      supplements: body.supplements === undefined ? (existingRecord.supplements ? readRecordSupplements(existingRecord) : null) : body.supplements,
       vitaminDGiven: vitaminDGiven === undefined ? existingRecord.vitaminDGiven : vitaminDGiven,
       customName: customName === undefined ? existingRecord.customName : customName,
       toothCodes: nextType === 'TOOTH_ERUPTION'
@@ -140,6 +142,7 @@ export async function PUT(
       return NextResponse.json({ error: mergedValidation.error }, { status: 400, headers: noStoreHeaders })
     }
 
+    const normalizedSupplements = Array.isArray(normalizedBody.supplements) ? validateSupplementEntries(normalizedBody.supplements) : null
     const normalizedToothCodes = Array.isArray(normalizedBody.toothCodes)
       ? normalizedBody.toothCodes as PrimaryToothCode[]
       : []
@@ -178,6 +181,7 @@ export async function PUT(
       diaperStatus: null as string | null,
       adGiven: null as boolean | null,
       vitaminDGiven: null as boolean | null,
+      supplements: null as string | null,
       customName: null as string | null,
       sleepStartTime: null as Date | null,
       sleepEndTime: null as Date | null,
@@ -204,8 +208,9 @@ export async function PUT(
       normalizedData.diaperType = normalizedBody.diaperType === undefined ? null : normalizedBody.diaperType as string | null
       normalizedData.diaperStatus = normalizedBody.diaperStatus === undefined ? null : normalizedBody.diaperStatus as string | null
     } else if (nextType === 'AD_VITAMIN') {
-      normalizedData.adGiven = normalizedBody.adGiven === undefined ? null : normalizedBody.adGiven as boolean | null
-      normalizedData.vitaminDGiven = normalizedBody.vitaminDGiven === undefined ? null : normalizedBody.vitaminDGiven as boolean | null
+      normalizedData.supplements = normalizedSupplements ? JSON.stringify(normalizedSupplements) : null
+      normalizedData.adGiven = Array.isArray(body.supplements) ? normalizedSupplements!.some(x => x.id === 'AD') : normalizedBody.adGiven === undefined ? null : normalizedBody.adGiven as boolean | null
+      normalizedData.vitaminDGiven = Array.isArray(body.supplements) ? normalizedSupplements!.some(x => x.id === 'VITAMIN_D') : normalizedBody.vitaminDGiven === undefined ? null : normalizedBody.vitaminDGiven as boolean | null
     } else if (nextType === 'SLEEP') {
       normalizedData.sleepStartTime = normalizedBody.sleepStartTime ? new Date(normalizedBody.sleepStartTime as string) : null
       normalizedData.sleepEndTime = normalizedBody.sleepEndTime ? new Date(normalizedBody.sleepEndTime as string) : null

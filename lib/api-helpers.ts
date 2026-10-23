@@ -55,7 +55,7 @@ export function getBeijingDaysAgoStr(daysAgo: number): string {
 export function buildSleepAwareOrClause(start: Date, end: Date) {
   return [
     { recordedAt: { gte: start, lte: end } },
-    { type: 'SLEEP', sleepStartTime: { gte: start, lte: end } },
+    { type: 'SLEEP', sleepStartTime: { lte: end }, OR: [{ sleepEndTime: { gte: start } }, { sleepEndTime: null }] },
   ]
 }
 

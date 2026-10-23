@@ -1,7 +1,7 @@
 import { defaultHomepageSettings, parseHomepageSettings, type HomepageSettings } from '@/lib/homepage-settings'
 import { prisma } from '@/lib/prisma'
 import { getBeijingToday } from '@/lib/time'
-import { getBeijingDayRange } from '@/lib/api-helpers'
+import { getBeijingDayRange, buildSleepAwareOrClause } from '@/lib/api-helpers'
 import { getPreloadedBabies, type PreloadedBaby } from '@/lib/server-babies'
 import { getServerSession } from '@/lib/server-auth'
 import { DEFAULT_QUICK_RECORD_KEYS, parseQuickRecordSettings, type QuickRecordKey } from '@/lib/quick-records'
@@ -38,6 +38,7 @@ export interface PreloadedDashboardHealthRecord {
   diaperStatus: string | null
   adGiven: boolean | null
   vitaminDGiven: boolean | null
+  supplements: string | null
   customName: string | null
   sleepStartTime: string | null
   sleepEndTime: string | null
@@ -136,7 +137,7 @@ export async function getPreloadedDashboardData(): Promise<PreloadedDashboardDat
       where: {
         babyId: initialSelectedBabyId,
         createdBy: session.user.id,
-        recordedAt: { gte: start, lte: end },
+        OR: buildSleepAwareOrClause(start, end),
       },
       orderBy: { recordedAt: 'desc' },
       select: {
@@ -156,6 +157,7 @@ export async function getPreloadedDashboardData(): Promise<PreloadedDashboardDat
         diaperStatus: true,
         adGiven: true,
         vitaminDGiven: true,
+        supplements: true,
         customName: true,
         sleepStartTime: true,
         sleepEndTime: true,
@@ -220,6 +222,7 @@ export async function getPreloadedDashboardData(): Promise<PreloadedDashboardDat
       diaperStatus: record.diaperStatus,
       adGiven: record.adGiven,
       vitaminDGiven: record.vitaminDGiven,
+      supplements: record.supplements,
       customName: record.customName,
       sleepStartTime: record.sleepStartTime?.toISOString() ?? null,
       sleepEndTime: record.sleepEndTime?.toISOString() ?? null,

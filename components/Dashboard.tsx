@@ -1,10 +1,13 @@
 'use client'
+import BabyAvatar from '@/components/BabyAvatar'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { formatBeijingTime, getBeijingToday, extractDateStr, parseDateAsBeijing } from '@/lib/time'
 import { RECORDS_CHANGED_EVENT } from '@/lib/cache-helpers'
 import HomepageSummaryCards from '@/components/HomepageSummaryCards'
-import { defaultHomepageSettings, validateHomepageSettings, type HomepageSettings } from '@/lib/homepage-settings'
+import { summarizeHomepageSleep } from '@/lib/homepage-sleep'
+import { DEFAULT_SUPPLEMENTS, readRecordSupplements, type SupplementDefinition } from '@/lib/supplements'
+import { defaultHomepageSettings, parseHomepageSettings, HOME_SECTION_KEYS, validateHomepageSettings, type HomepageSettings } from '@/lib/homepage-settings'
 import { invalidateRequestCache } from '@/lib/client-request-cache'
 import Link from 'next/link'
 import {
@@ -60,6 +63,7 @@ interface HealthRecord {
   diaperType?: string | null
   diaperStatus?: string | null
   adGiven?: boolean | null
+  supplements?: string | null
   vitaminDGiven?: boolean | null
   customName?: string | null
   sleepStartTime?: string | null
@@ -74,10 +78,14 @@ export interface DailyStats {
   totalBreastDuration: number
   breastBottleCount: number
   totalBreastMilkAmount: number
+  solidFoodCount: number
   formulaCount: number
   totalFormulaAmount: number
   adGiven: boolean
   vitaminDGiven: boolean
+  sleepMinutes: number
+  sleepCount: number
+  sleeping: boolean
   weight?: number
   height?: number
   temperature?: number
@@ -123,6 +131,7 @@ function buildDailyStats(feedingData: FeedingRecord[], healthData: HealthRecord[
   const latestTemperatureRecord = healthData.find(r => r.type === 'TEMPERATURE' && typeof r.temperature === 'number')
 
   return {
+    ...summarizeHomepageSleep(healthData, getBeijingToday()),
     breastFeedingCount: feedingData.filter(r => r.type === 'BREAST_MILK').length,
     totalBreastDuration: feedingData
       .filter(r => r.type === 'BREAST_MILK')
@@ -131,6 +140,7 @@ function buildDailyStats(feedingData: FeedingRecord[], healthData: HealthRecord[
     totalBreastMilkAmount: feedingData
       .filter(r => r.type === 'BREAST_MILK_BOTTLE')
       .reduce((sum, r) => sum + (r.breastMilkAmount || 0), 0),
+    solidFoodCount: feedingData.filter(record => record.type === 'SOLID_FOOD').length,
     formulaCount: feedingData.filter(r => r.type === 'FORMULA').length,
     totalFormulaAmount: feedingData
       .filter(r => r.type === 'FORMULA')
@@ -155,8 +165,10 @@ export default function Dashboard({
   initialHomepageSettings = defaultHomepageSettings(),
   initialQuickRecordKeys = [...DEFAULT_QUICK_RECORD_KEYS],
 }: Props) {
-  const { openComposer } = useRecordComposer()
-  const [homepageSettings, setHomepageSettings] = useState(initialHomepageSettings)
+  const { openComposer, activeTimer } = useRecordComposer()
+  const [homepageSettings, setHomepageSettings] = useState(() => parseHomepageSettings(JSON.stringify(initialHomepageSettings)))
+  const [supplementDefinitions, setSupplementDefinitions] = useState<SupplementDefinition[]>(DEFAULT_SUPPLEMENTS)
+  const [clock, setClock] = useState(Date.now)
   const todayRequestIdRef = useRef(0)
   const [babies, setBabies] = useState<Baby[]>(initialBabies)
   const [internalSelectedBabyId, setInternalSelectedBabyId] = useState<string | null>(initialBabies[0]?.id ?? null)
@@ -181,6 +193,29 @@ export default function Dashboard({
 
   const resolvedSelectedBabyId = selectedBabyId ?? internalSelectedBabyId
   const hasInitialTodayData = !freshFetch && (initialTodayRecords.length > 0 || initialTodayHealthRecords.length > 0)
+  const selectedSleepTimer = activeTimer?.kind === 'sleep' && activeTimer.babyId === resolvedSelectedBabyId ? activeTimer : null
+  const hasOngoingSleep = !!selectedSleepTimer || todayHealthRecords.some(record => record.type === 'SLEEP' && record.sleepStartTime && !record.sleepEndTime)
+  useEffect(() => {
+    if (!hasOngoingSleep) return
+    const timer = setInterval(() => setClock(Date.now()), 60000)
+    return () => clearInterval(timer)
+  }, [hasOngoingSleep])
+  const sleepStats = summarizeHomepageSleep([
+    ...todayHealthRecords,
+    ...(selectedSleepTimer ? [{type:'SLEEP',sleepStartTime:new Date(selectedSleepTimer.startedAt).toISOString(),sleepEndTime:null}] : []),
+  ], getBeijingToday(), Math.max(clock, Date.now()))
+  const supplementEntries = todayHealthRecords.filter(record => record.type === 'AD_VITAMIN').flatMap(record => readRecordSupplements(record))
+  useEffect(() => {
+    let active = true
+    setSupplementDefinitions(DEFAULT_SUPPLEMENTS.map(item => ({...item})))
+    if (resolvedSelectedBabyId) void fetch(`/api/babies/${resolvedSelectedBabyId}/supplements`, {cache:'no-store'}).then(async response => {
+      if (!response.ok) return
+      const result = await response.json()
+      if (active && Array.isArray(result.definitions)) setSupplementDefinitions(result.definitions)
+    }).catch(error => console.error('获取营养补充项目失败:',error))
+    return () => {active = false}
+  }, [resolvedSelectedBabyId])
+
 
   const openQuickRecord = (key: QuickRecordKey) => {
     if (key === 'GROUP_FEEDING') {
@@ -268,7 +303,7 @@ export default function Dashboard({
     void fetch('/api/user/homepage', { cache: 'no-store' }).then(async response => {
       if (!response.ok) return
       const settings = await response.json()
-      if (active && validateHomepageSettings(settings) === null) setHomepageSettings(settings)
+      if (active && validateHomepageSettings(settings) === null) setHomepageSettings(parseHomepageSettings(JSON.stringify(settings)))
     }).catch(error => console.error('获取首页设置失败:', error))
     return () => { active = false }
   }, [])
@@ -305,17 +340,17 @@ export default function Dashboard({
     const now = new Date()
     const diffTime = now.getTime() - birth.getTime()
     const totalDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-    
-    let months = (now.getFullYear() - birth.getFullYear()) * 12 + 
+
+    let months = (now.getFullYear() - birth.getFullYear()) * 12 +
                  (now.getMonth() - birth.getMonth())
     let days = now.getDate() - birth.getDate()
-    
+
     if (days < 0) {
       months -= 1
       const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0)
       days += prevMonth.getDate()
     }
-    
+
     if (months <= 0) {
       return `${totalDays + 1}天`
     }
@@ -365,12 +400,9 @@ export default function Dashboard({
 
   const sectionContent = {
     BABY: (selectedBaby && (
-        <div className="bg-white rounded-card p-4 sm:p-6 shadow-card border border-blue-50">
+        <div className="bg-white/70 rounded-card p-4 sm:p-6 shadow-card border border-blue-50">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-pink-100 to-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <BabyIcon size={24} className="text-blue-600 sm:hidden" />
-              <BabyIcon size={28} className="text-blue-600 hidden sm:block" />
-            </div>
+            <BabyAvatar key={selectedBaby.id} babyId={selectedBaby.id} />
             <div className="flex-1 min-w-0">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 truncate">{selectedBaby.name}</h2>
               <p className="text-xs sm:text-sm text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">
@@ -380,11 +412,15 @@ export default function Dashboard({
           </div>
         </div>
       )),
-    SUMMARY: homepageSettings.cards.length > 0 ? <HomepageSummaryCards cards={homepageSettings.cards} stats={stats} onRecord={key => {
+    SUMMARY: homepageSettings.cards.length > 0 ? <HomepageSummaryCards feedingTypes={homepageSettings.feedingTypes} onFeedingRecord={() => {
+      const types = homepageSettings.feedingTypes
+      if (!resolvedSelectedBabyId || !types.length) return
+      openComposer(types.length === 1 ? types[0] : null, {scope:'feeding',allowedTypes:types,patch:{babyId:resolvedSelectedBabyId}})
+    }} cards={homepageSettings.cards} babyId={resolvedSelectedBabyId || undefined} stats={{...(stats || buildDailyStats([],[])),...sleepStats}} supplements={supplementDefinitions} entries={supplementEntries} onRecord={key => {
       if (resolvedSelectedBabyId) openComposer(key, { patch: { babyId: resolvedSelectedBabyId } })
     }} /> : null,
     HEALTH: (stats && (stats.temperature || stats.weight || stats.height) && (
-        <div className="bg-white rounded-card p-3 shadow-card border border-blue-50">
+        <div className="bg-white/70 rounded-card p-3 shadow-card border border-blue-50">
           <h3 className="text-xs font-medium text-gray-500 mb-2">今日健康数据</h3>
           <div className="flex flex-wrap gap-2">
             {stats.temperature && (
@@ -409,7 +445,7 @@ export default function Dashboard({
         </div>
       )),
     MEMOS: (initialRecentMemos.length > 0 && (
-        <div className="bg-white rounded-card p-3 shadow-card border border-indigo-50">
+        <div className="bg-white/70 rounded-card p-3 shadow-card border border-indigo-50">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <ClipboardList size={14} className="text-indigo-500" />
@@ -453,7 +489,7 @@ export default function Dashboard({
           </div>
         </div>
       )),
-    QUICK_RECORDS: (<div className="bg-white rounded-card p-4 shadow-card border border-blue-50">
+    QUICK_RECORDS: (<div className="bg-white/70 rounded-card p-4 shadow-card border border-blue-50">
         <h3 className="text-base font-bold text-slate-900 mb-3">快捷记录</h3>
         <div className="grid grid-cols-4 gap-2">
           {initialQuickRecordKeys.map(key => {
@@ -475,7 +511,7 @@ export default function Dashboard({
           })}
         </div>
       </div>),
-    TODAY_RECORDS: (<div className="bg-white rounded-card p-4 shadow-card border border-blue-50">
+    TODAY_RECORDS: (<div className="bg-white/70 rounded-card p-4 shadow-card border border-blue-50">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-bold text-slate-900">今日记录</h3>
           <Link href="/timeline" className="text-sm text-blue-600 hover:text-blue-700 flex items-center">
@@ -497,7 +533,7 @@ export default function Dashboard({
                   : ((record as HealthRecord).type === 'SLEEP' && (record as HealthRecord).sleepStartTime)
                     ? (record as HealthRecord).sleepStartTime!
                     : (record as HealthRecord).recordedAt
-                
+
                 return (
                   <div
                     key={record.id}
@@ -526,9 +562,9 @@ export default function Dashboard({
   }
   return (
     <div className="mx-auto max-w-4xl space-y-4 px-3 py-4 sm:px-4">
-      {homepageSettings.sections.some(key => !!sectionContent[key]) ? homepageSettings.sections.map(key => (
+      {HOME_SECTION_KEYS.some(key => !!sectionContent[key]) ? HOME_SECTION_KEYS.map(key => (
         sectionContent[key] ? <section key={key} data-home-section={key}>{sectionContent[key]}</section> : null
-      )) : <div className="rounded-card bg-white p-6 text-center text-slate-500"><p>当前没有可展示的首页内容</p><a href="/settings/homepage" className="mt-3 inline-block text-blue-700">管理首页展示</a></div>}
+      )) : <div className="rounded-card bg-white/70 p-6 text-center text-slate-500"><p>当前没有可展示的首页内容</p><a href="/settings/homepage" className="mt-3 inline-block text-blue-700">管理首页展示</a></div>}
     </div>
   )
 }

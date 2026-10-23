@@ -1,3 +1,4 @@
+import { validateSupplementEntries } from '@/lib/supplements'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/lib/auth'
@@ -169,6 +170,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400, headers: noStoreHeaders })
     }
 
+    const normalizedSupplements = Array.isArray(body.supplements) ? validateSupplementEntries(body.supplements) : null
     const typedType = type as (typeof HEALTH_TYPES)[number]
     if (!HEALTH_TYPES.includes(typedType)) {
       return NextResponse.json({ error: '无效的健康记录类型' }, { status: 400, headers: noStoreHeaders })
@@ -246,8 +248,9 @@ export async function POST(request: NextRequest) {
           vaccineTotalDoses: typedType === 'VACCINE' ? (typedVaccineTotalDoses ?? null) : null,
           diaperType: typedType === 'DIAPER' ? (typedDiaperType ?? null) : null,
           diaperStatus: typedType === 'DIAPER' ? (typedDiaperStatus ?? null) : null,
-          adGiven: typedType === 'AD_VITAMIN' ? (typedAdGiven ?? null) : null,
-          vitaminDGiven: typedType === 'AD_VITAMIN' ? (typedVitaminDGiven ?? null) : null,
+          adGiven: typedType === 'AD_VITAMIN' ? (normalizedSupplements ? normalizedSupplements.some(x => x.id === 'AD') : (typedAdGiven ?? null)) : null,
+          supplements: typedType === 'AD_VITAMIN' && normalizedSupplements ? JSON.stringify(normalizedSupplements) : null,
+          vitaminDGiven: typedType === 'AD_VITAMIN' ? (normalizedSupplements ? normalizedSupplements.some(x => x.id === 'VITAMIN_D') : (typedVitaminDGiven ?? null)) : null,
           customName: typedType === 'CUSTOM' ? (typedCustomName?.trim() || null) : null,
           sleepStartTime: typedType === 'SLEEP' ? (typedSleepStartTime ? new Date(typedSleepStartTime) : null) : null,
           sleepEndTime: typedType === 'SLEEP' ? (typedSleepEndTime ? new Date(typedSleepEndTime) : null) : null,

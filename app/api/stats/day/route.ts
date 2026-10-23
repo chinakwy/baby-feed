@@ -4,8 +4,9 @@ import { prisma } from '@/lib/prisma'
 import { validateId, validateDateOnlyString } from '@/lib/validation'
 import { buildUserActionKey, enforceRateLimit } from '@/lib/rate-limit'
 import { getRateLimit } from '@/lib/rate-limit-config'
-import { noStoreHeaders, getBeijingDayRange } from '@/lib/api-helpers'
+import { noStoreHeaders, getBeijingDayRange, buildSleepAwareOrClause } from '@/lib/api-helpers'
 import { logError } from '@/lib/logger'
+import { summarizeHomepageSleep } from '@/lib/homepage-sleep'
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,10 +75,7 @@ export async function GET(request: NextRequest) {
       where: {
         babyId,
         createdBy: session.user.id,
-        recordedAt: {
-          gte: dayStart,
-          lte: dayEnd
-        }
+        OR: buildSleepAwareOrClause(dayStart, dayEnd)
       }
     })
 
@@ -87,6 +85,8 @@ export async function GET(request: NextRequest) {
 
     const dayStats = {
       date: dateStr,
+      ...summarizeHomepageSleep(healthRecords.map(record => ({type:record.type,sleepStartTime:record.sleepStartTime?.toISOString(),sleepEndTime:record.sleepEndTime?.toISOString()})), dateStr),
+      vitaminDGiven: healthRecords.some(r => r.type === 'AD_VITAMIN' && r.vitaminDGiven),
       breastFeedingCount: breastRecords.length,
       totalBreastDuration: breastRecords.reduce(
         (sum, r) => sum + (r.leftBreastDuration || 0) + (r.rightBreastDuration || 0),
@@ -98,6 +98,7 @@ export async function GET(request: NextRequest) {
         0
       ),
       formulaCount: formulaRecords.length,
+      solidFoodCount: feedingRecords.filter(record => record.type === 'SOLID_FOOD').length,
       totalFormulaAmount: formulaRecords.reduce(
         (sum, r) => sum + (r.formulaAmount || 0),
         0

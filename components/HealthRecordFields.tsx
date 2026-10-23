@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Pill } from 'lucide-react'
+import SupplementFields from '@/components/SupplementFields'
+import { readRecordSupplements, validateSupplementEntries, type SupplementEntry } from '@/lib/supplements'
 import type { HealthFieldValues, HealthType, DiaperType, VaccineSuggestion } from '@/lib/health-records'
 import {
   buildRecentMedicationSuggestions,
@@ -26,6 +28,7 @@ interface HealthFieldSetters {
   setDiaperStatus: (value: string) => void
   setAdGiven: (value: boolean) => void
   setVitaminDGiven: (value: boolean) => void
+  setSupplements?: (value: SupplementEntry[]) => void
   setCustomName: (value: string) => void
   setSleepStartTime: (value: string) => void
   setSleepEndTime: (value: string) => void
@@ -97,8 +100,9 @@ export function getHealthFieldValidationMessage(type: HealthType, values: Health
     }
   }
 
-  if (type === 'AD_VITAMIN' && !values.adGiven && !values.vitaminDGiven) {
-    return '请至少选择 AD 或维生素D'
+  if (type === 'AD_VITAMIN') {
+    if (!values.adGiven && !values.vitaminDGiven && !values.supplements?.length) return '请至少选择一种营养补充项目'
+    try { validateSupplementEntries(values.supplements || []) } catch (error) { return (error as Error).message }
   }
 
   if (type === 'CUSTOM' && !values.customName.trim()) {
@@ -790,17 +794,11 @@ export default function HealthRecordFields({
 
   return (
     <fieldset>
-      <legend className="mb-1.5 text-sm font-medium text-slate-700">本次补充</legend>
-      <div className="grid grid-cols-2 gap-2">
-        <label className={`flex min-h-12 cursor-pointer items-center gap-2.5 rounded-lg border px-3 transition-colors ${values.adGiven ? 'border-orange-300 bg-orange-50 text-orange-800' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
-          <input type="checkbox" checked={values.adGiven} onChange={(event) => setters.setAdGiven(event.target.checked)} className="h-5 w-5 rounded border-slate-300 text-orange-600 focus:ring-orange-500" />
-          <span className="text-sm font-semibold">AD</span>
-        </label>
-        <label className={`flex min-h-12 cursor-pointer items-center gap-2.5 rounded-lg border px-3 transition-colors ${values.vitaminDGiven ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
-          <input type="checkbox" checked={values.vitaminDGiven} onChange={(event) => setters.setVitaminDGiven(event.target.checked)} className="h-5 w-5 rounded border-slate-300 text-amber-600 focus:ring-amber-500" />
-          <span className="text-sm font-semibold">维生素D</span>
-        </label>
-      </div>
+      <SupplementFields babyId={babyId} entries={values.supplements ?? readRecordSupplements(values)} onChange={entries => {
+        setters.setSupplements?.(entries)
+        setters.setAdGiven(entries.some(x => x.id === 'AD'))
+        setters.setVitaminDGiven(entries.some(x => x.id === 'VITAMIN_D'))
+      }} />
       {validationMessage ? <p className="mt-1.5 text-sm text-red-600">{validationMessage}</p> : null}
     </fieldset>
   )

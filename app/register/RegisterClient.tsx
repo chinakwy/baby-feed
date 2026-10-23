@@ -69,8 +69,8 @@ export default function RegisterClient({ allowRegistration }: RegisterClientProp
         <div className="w-full max-w-sm space-y-10">
           {/* Logo */}
           <div className="text-center">
-            <Image className="mx-auto mb-3 h-16 w-16" src="/icon.svg" alt="" width={64} height={64} priority />
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Baby Feed</h1>
+            <Image className="mx-auto mb-3 h-16 w-16" src="/icons/ximilu-pearl-v1-192.png" alt="" width={64} height={64} priority />
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">西米露成长记</h1>
             <p className="text-slate-500 mt-1 text-sm mb-4">宝宝喂养记录</p>
           </div>
 
@@ -103,8 +103,8 @@ export default function RegisterClient({ allowRegistration }: RegisterClientProp
       <div className="w-full max-w-sm space-y-10">
         {/* Logo */}
         <div className="text-center">
-          <Image className="mx-auto mb-3 h-14 w-14" src="/icon.svg" alt="" width={56} height={56} priority />
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Baby Feed</h1>
+          <Image className="mx-auto mb-3 h-14 w-14" src="/icons/ximilu-pearl-v1-192.png" alt="" width={56} height={56} priority />
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">西米露成长记</h1>
           <p className="text-slate-500 mt-1 text-sm mb-4">
             {inviteCode ? '通过邀请链接注册' : '创建您的账号'}
           </p>

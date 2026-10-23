@@ -25,6 +25,7 @@ import {
   MoreVertical,
   Webhook,
   Bell,
+  Palette,
   LayoutGrid,
   Loader2,
   Mars,
@@ -66,7 +67,7 @@ export default function SettingsComponent({ userName, userEmail, currentVersion,
     initialActiveBabyId ?? (initialBabies.length > 0 ? initialBabies[0].id : null)
   )
   const { copyToClipboard } = useCopyToast()
-  
+
   // 宝宝表单
   const [babyName, setBabyName] = useState('')
   const [birthDate, setBirthDate] = useState('')
@@ -466,6 +467,9 @@ export default function SettingsComponent({ userName, userEmail, currentVersion,
         </div>
 
         <div className="space-y-2 pt-2 border-t border-gray-100">
+          <button type="button" onClick={() => router.push('/settings/theme')} className="mobile-touch-target group flex w-full items-center justify-between rounded-xl px-2 py-3 text-left transition hover:bg-gray-50">
+            <span className="flex items-center gap-3"><Palette size={18} className="text-slate-400 group-hover:text-blue-500" /><span className="text-slate-700">主题颜色</span></span><span className="text-sm text-slate-400">›</span>
+          </button>
           <button type="button" onClick={() => router.push('/settings/homepage')} className="mobile-touch-target group flex w-full items-center justify-between rounded-xl px-2 py-3 text-left transition hover:bg-gray-50">
             <span className="flex items-center gap-3"><LayoutGrid size={18} className="text-slate-400 group-hover:text-blue-500" /><span className="text-slate-700">首页展示管理</span></span><span className="text-sm text-slate-400">›</span>
           </button>

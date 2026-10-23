@@ -3,21 +3,22 @@ import assert from 'node:assert/strict'
 import load from './helpers/load-component.cjs'
 let settings = {}
 try { settings = load('lib/homepage-settings.ts') } catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error }
-const expected = { sections: ['BABY','SUMMARY','HEALTH','MEMOS','QUICK_RECORDS','TODAY_RECORDS'], cards: ['BREAST_MILK','FORMULA','AD_VITAMIN','DIAPER'] }
+const feedingTypes=['BREAST_MILK','BREAST_MILK_BOTTLE','FORMULA','SOLID_FOOD']
+const expected = { sections: ['BABY','SUMMARY','HEALTH','MEMOS','QUICK_RECORDS','TODAY_RECORDS'], cards: ['FEEDING','SLEEP','AD_VITAMIN','DIAPER'], feedingTypes }
 
 test('missing or corrupt preferences preserve the existing homepage by default', () => {
   assert.equal(typeof settings.parseHomepageSettings, 'function', 'homepage preferences parser is required')
   for (const value of [null,'invalid-json','{"sections":["UNKNOWN"],"cards":[]}']) assert.deepEqual(settings.parseHomepageSettings(value), expected)
 })
-test('valid custom ordering and an intentionally empty homepage survive serialization', () => {
+test('card order survives while sections always remain fixed', () => {
   assert.equal(typeof settings.parseHomepageSettings, 'function')
-  for (const value of [{ sections: ['TODAY_RECORDS','SUMMARY'], cards: ['FORMULA','DIAPER'] }, { sections: [], cards: [] }]) {
-    assert.deepEqual(settings.parseHomepageSettings(JSON.stringify(value)), value)
+  for (const value of [{ sections: ['TODAY_RECORDS','SUMMARY'], cards: ['SLEEP','DIAPER'] }, { sections: [], cards: [] }]) {
+    assert.deepEqual(settings.parseHomepageSettings(JSON.stringify(value)), {...value,sections:expected.sections,feedingTypes})
   }
 })
 test('server validation rejects unsupported keys, duplicates and non-array preferences', () => {
   assert.equal(typeof settings.validateHomepageSettings, 'function')
-  for (const value of [null,[], { sections: 'SUMMARY', cards: [] }, { sections: ['SUMMARY','SUMMARY'], cards: [] }, { sections: ['PRIVATE'], cards: [] }, { sections: [], cards: ['FORMULA','FORMULA'] }]) {
+  for (const value of [null,[], { sections: 'SUMMARY', cards: [] }, { sections: ['SUMMARY','SUMMARY'], cards: [] }, { sections: ['PRIVATE'], cards: [] }, { sections: [], cards: ['SLEEP','SLEEP'] }]) {
     assert.equal(typeof settings.validateHomepageSettings(value), 'string')
   }
   assert.equal(settings.validateHomepageSettings(expected), null)

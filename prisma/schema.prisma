@@ -28,6 +28,7 @@ model User {
   reminderExecutions  ReminderExecution[]
   deletedRecords      DeletedRecord[]
   reminderSettings    String?
+  themeColor          String              @default("blue")
   homepageSettings    String?
   quickRecordSettings String?
 }
@@ -55,6 +56,8 @@ model ApiKey {
 model Baby {
   id             String          @id @default(cuid())
   name           String
+  avatarImage    String?
+  supplementSettings String?
   birthDate      DateTime
   gender         String
   createdAt      DateTime        @default(now())
@@ -113,6 +116,7 @@ model HealthRecord {
   diaperStatus        String?
   adGiven             Boolean?
   vitaminDGiven       Boolean?
+  supplements         String?
   customName          String?
   sleepStartTime      DateTime?
   sleepEndTime        DateTime?

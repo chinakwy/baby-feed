@@ -1,5 +1,5 @@
-export const HOME_SECTION_KEYS = ['BABY', 'SUMMARY', 'HEALTH', 'MEMOS', 'QUICK_RECORDS', 'TODAY_RECORDS'] as const
-export const HOME_CARD_KEYS = ['FEEDING', 'SLEEP', 'AD_VITAMIN', 'DIAPER'] as const
+export const HOME_SECTION_KEYS = ['BABY', 'SUMMARY', 'MEMOS', 'HEALTH', 'QUICK_RECORDS', 'TODAY_RECORDS'] as const
+export const HOME_CARD_KEYS = ['FEEDING', 'AD_VITAMIN', 'DIAPER', 'SLEEP'] as const
 export const HOME_FEEDING_KEYS = ['BREAST_MILK', 'BREAST_MILK_BOTTLE', 'FORMULA', 'SOLID_FOOD'] as const
 export type HomeFeedingKey = typeof HOME_FEEDING_KEYS[number]
 export const HOME_FEEDING_LABELS: Record<HomeFeedingKey,string> = {BREAST_MILK:'母乳亲喂',BREAST_MILK_BOTTLE:'母乳瓶喂',FORMULA:'奶粉',SOLID_FOOD:'辅食'}
@@ -35,7 +35,7 @@ export function parseHomepageSettings(value: string | null | undefined): Homepag
     const settings = JSON.parse(value || 'null')
     if (settings && Array.isArray(settings.cards)) settings.cards = settings.cards.map((key: string) => key === 'BREAST_MILK' ? 'FEEDING' : key === 'FORMULA' ? 'SLEEP' : key)
     return validateHomepageSettings(settings) === null
-      ? { sections: [...HOME_SECTION_KEYS], cards: [...settings.cards], feedingTypes: [...(settings.feedingTypes ?? HOME_FEEDING_KEYS)] }
+      ? { sections: [...HOME_SECTION_KEYS], cards: HOME_CARD_KEYS.filter(key => settings.cards.includes(key)), feedingTypes: [...(settings.feedingTypes ?? HOME_FEEDING_KEYS)] }
       : defaultHomepageSettings()
   } catch { return defaultHomepageSettings() }
 }

@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, GripVertical } from 'lucide-react'
 
 interface Item { key: string; label: string }
-export default function HomeVisibilityList({ title, items, value, onChange, disabled = false }: {
-  title: string; items: Item[]; value: string[]; onChange: (value: string[]) => void; disabled?: boolean
+export default function HomeVisibilityList({ title, items, value, onChange, disabled = false, allowReorder = true }: {
+  title: string; items: Item[]; value: string[]; onChange: (value: string[]) => void; disabled?: boolean; allowReorder?: boolean
 }) {
   const listRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ key: string; pointerId: number; y: number } | null>(null)
@@ -68,10 +68,10 @@ export default function HomeVisibilityList({ title, items, value, onChange, disa
       window.removeEventListener('pointercancel', end)
     }
   }, [dragging, reorder])
-  const ordered = [...value.map(key => items.find(item => item.key === key)!).filter(Boolean), ...items.filter(item => !value.includes(item.key))]
+  const ordered = allowReorder ? [...value.map(key => items.find(item => item.key === key)!).filter(Boolean), ...items.filter(item => !value.includes(item.key))] : items
   return (
     <section className="overflow-hidden rounded-card border border-blue-50 bg-white shadow-card">
-      <div className="border-b border-slate-100 p-4"><h2 className="font-bold text-slate-900">{title}</h2><p className="mt-1 text-xs text-slate-500">勾选显示；拖动手柄或使用上下按钮调整顺序。</p></div>
+      <div className="border-b border-slate-100 p-4"><h2 className="font-bold text-slate-900">{title}</h2><p className="mt-1 text-xs text-slate-500">{allowReorder ? '勾选显示；拖动手柄或使用上下按钮调整顺序。' : '勾选显示；首页按固定顺序排列。'}</p></div>
       <div ref={listRef} className="divide-y divide-slate-100">
         {ordered.map(item => {
           const index = value.indexOf(item.key), enabled = index >= 0
@@ -81,6 +81,7 @@ export default function HomeVisibilityList({ title, items, value, onChange, disa
                 <input type="checkbox" aria-label={`显示${item.label}`} checked={enabled} disabled={disabled} onChange={() => onChange(enabled ? value.filter(key => key !== item.key) : [...value, item.key])} className="h-5 w-5 shrink-0 accent-blue-600" />
                 <span className={`text-sm font-semibold ${enabled ? 'text-slate-800' : 'text-slate-400'}`}>{item.label}</span>
               </label>
+              {allowReorder && <>
               <button type="button" disabled={disabled || !enabled || index === 0} aria-label={`上移${item.label}`} onClick={() => move(item.key, index - 1)} className="flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-25"><ArrowUp size={17} /></button>
               <button type="button" disabled={disabled || !enabled || index === value.length - 1} aria-label={`下移${item.label}`} onClick={() => move(item.key, index + 1)} className="flex h-11 w-10 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-25"><ArrowDown size={17} /></button>
               <button type="button" disabled={disabled || !enabled} aria-label={`拖动调整${item.label}顺序`} aria-grabbed={dragging === item.key}
@@ -94,6 +95,7 @@ export default function HomeVisibilityList({ title, items, value, onChange, disa
                   event.preventDefault(); move(item.key, targets[event.key])
                 }}
                 className="flex h-11 w-10 shrink-0 touch-none items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 disabled:opacity-25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"><GripVertical size={20} /></button>
+              </>}
             </div>
           )
         })}

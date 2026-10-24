@@ -4,6 +4,7 @@ import { getServerSession } from '@/lib/server-auth'
 export interface PreloadedBaby {
   id: string
   name: string
+  supplementSettings?: string | null
   birthDate: string
   gender: string
   createdAt: string
@@ -31,6 +32,7 @@ export async function getPreloadedBabies(): Promise<PreloadedBabiesResult> {
       select: {
         id: true,
         name: true,
+        supplementSettings: true,
         birthDate: true,
         gender: true,
         createdAt: true,
@@ -41,6 +43,7 @@ export async function getPreloadedBabies(): Promise<PreloadedBabiesResult> {
   const normalizedBabies = babies.map((baby) => ({
     id: baby.id,
     name: baby.name,
+    supplementSettings: baby.supplementSettings,
     birthDate: baby.birthDate.toISOString(),
     gender: baby.gender,
     createdAt: baby.createdAt.toISOString(),

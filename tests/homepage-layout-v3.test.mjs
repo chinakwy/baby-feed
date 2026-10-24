@@ -16,23 +16,23 @@ test('legacy sections become fixed while feeding choices are validated and persi
  assert.equal(typeof settings.validateHomepageSettings({...parsed,feedingTypes:['FORMULA','FORMULA']}),'string')
  assert.deepEqual(settings.parseHomepageSettings('{"sections":[],"cards":[]}').feedingTypes,['BREAST_MILK','BREAST_MILK_BOTTLE','FORMULA','SOLID_FOOD'])
 })
-test('four compact whole-card buttons contain no management links and honor chosen feeding methods',()=>{
+test('four compact summaries contain no management links and honor chosen feeding methods',()=>{
  let clicked=0
- const renderer=TestRenderer.create(React.createElement(Cards,{cards:['FEEDING','SLEEP','AD_VITAMIN','DIAPER'],feedingTypes:['FORMULA','SOLID_FOOD'],stats:{formulaCount:2,totalFormulaAmount:180,solidFoodCount:1},onRecord(){},onFeedingRecord(){clicked++}}))
+ const renderer=TestRenderer.create(React.createElement(Cards,{cards:['FEEDING','AD_VITAMIN','DIAPER','SLEEP'],feedingTypes:['FORMULA','SOLID_FOOD'],stats:{formulaCount:2,totalFormulaAmount:180,solidFoodCount:1},onRecord(){clicked++}}))
  try{
-  const cards=renderer.root.findAll(n=>n.type==='button'&&n.props['data-home-card'])
+  const cards=renderer.root.findAll(n=>typeof n.type==='string'&&n.props['data-home-card'])
   assert.equal(cards.length,4)
   assert.equal(renderer.root.findAllByType('a').length,0)
   const feeding=cards.find(n=>n.props['data-home-card']==='FEEDING')
-  const text=feeding.findAllByType('span').flatMap(n=>n.children.filter(x=>typeof x==='string')).join(' ')
+  const read=n=>typeof n==='string'?n:(n.children||[]).map(read).join('');const text=read(feeding)
   assert.match(text,/辅食/);assert.match(text,/180ml/);assert.doesNotMatch(text,/亲喂|母乳瓶喂/)
-  feeding.props.onClick();assert.equal(clicked,1)
+  feeding.find(n=>n.type==='button'&&n.props['data-feeding-method']==='FORMULA').props.onClick();assert.equal(clicked,1)
  }finally{renderer.unmount()}
 })
 test('manager removes section editing and saves feeding configuration beside card order',async t=>{
  const previousFetch=global.fetch,previousSelf=global.self
  global.self={setTimeout,clearTimeout}
- const original={sections:[...settings.HOME_SECTION_KEYS],cards:['FEEDING','SLEEP','AD_VITAMIN','DIAPER'],feedingTypes:['BREAST_MILK','FORMULA','SOLID_FOOD']}
+ const original={sections:[...settings.HOME_SECTION_KEYS],cards:['FEEDING','AD_VITAMIN','DIAPER','SLEEP'],feedingTypes:['BREAST_MILK','FORMULA','SOLID_FOOD']}
  let submitted
  global.fetch=async(url,options={})=>({ok:true,json:async()=>{if(options.method==='PUT'){submitted=JSON.parse(options.body);return submitted}return original}})
  let renderer;t.after(()=>{if(renderer)act(()=>renderer.unmount());global.fetch=previousFetch;global.self=previousSelf})

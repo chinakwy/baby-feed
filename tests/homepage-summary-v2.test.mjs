@@ -9,20 +9,20 @@ let sleep = {}
 try { sleep = load('lib/homepage-sleep.ts') } catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error }
 
 test('default cards combine feeding and replace the former formula position with sleep', () => {
- assert.deepEqual(settings.defaultHomepageSettings().cards,['FEEDING','SLEEP','AD_VITAMIN','DIAPER'])
+ assert.deepEqual(settings.defaultHomepageSettings().cards,['FEEDING','AD_VITAMIN','DIAPER','SLEEP'])
  const legacy={sections:['SUMMARY'],cards:['DIAPER','FORMULA','BREAST_MILK']}
- assert.deepEqual(settings.parseHomepageSettings(JSON.stringify(legacy)),{sections:[...settings.HOME_SECTION_KEYS],cards:['DIAPER','SLEEP','FEEDING'],feedingTypes:[...settings.HOME_FEEDING_KEYS]})
+ assert.deepEqual(settings.parseHomepageSettings(JSON.stringify(legacy)),{sections:[...settings.HOME_SECTION_KEYS],cards:['FEEDING','DIAPER','SLEEP'],feedingTypes:[...settings.HOME_FEEDING_KEYS]})
  assert.deepEqual(settings.parseHomepageSettings('{"sections":[],"cards":[]}'),{sections:[...settings.HOME_SECTION_KEYS],cards:[],feedingTypes:[...settings.HOME_FEEDING_KEYS]})
 })
-test('feeding card keeps separate method totals and opens the configured launcher', () => {
+test('feeding card keeps separate method totals and opens its matching recording form', () => {
  const opened=[]
  const renderer=TestRenderer.create(React.createElement(Cards,{cards:['FEEDING','SLEEP'],stats:{breastFeedingCount:2,totalBreastDuration:25,breastBottleCount:1,totalBreastMilkAmount:80,formulaCount:2,totalFormulaAmount:150,sleepMinutes:90,sleepCount:2,sleeping:false},onRecord:type=>opened.push(type),onFeedingRecord:()=>opened.push('feeding-launcher')}))
  try {
-  renderer.root.find(n=>n.type==='button'&&n.props['aria-label']==='记录喂养').props.onClick()
-  assert.equal(opened.at(-1),'feeding-launcher')
+  renderer.root.find(n=>n.type==='button'&&n.props['data-feeding-method']==='FORMULA').props.onClick()
+  assert.equal(opened.at(-1),'FORMULA')
   renderer.root.find(n=>n.type==='button'&&n.props['aria-label']==='记录睡眠').props.onClick()
   assert.equal(opened.at(-1),'SLEEP')
-  const body=JSON.stringify(renderer.toJSON());for(const value of ['25分钟','80ml','150ml','1小时30分钟'])assert.ok(body.includes(value),value)
+  const read=n=>typeof n==='string'?n:(n.children||[]).map(read).join('');const body=read(renderer.root);for(const value of ['25分钟','80ml','150ml','1小时30分钟'])assert.ok(body.includes(value),value)
  }finally{renderer.unmount()}
 })
 test('sleep is clipped to Beijing day, ongoing sleep is capped at now, overlaps do not inflate duration', () => {

@@ -5,8 +5,9 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { formatBeijingTime, getBeijingToday, extractDateStr, parseDateAsBeijing } from '@/lib/time'
 import { RECORDS_CHANGED_EVENT } from '@/lib/cache-helpers'
 import HomepageSummaryCards from '@/components/HomepageSummaryCards'
+import { todayHealthSummary } from '@/lib/homepage-health'
 import { summarizeHomepageSleep } from '@/lib/homepage-sleep'
-import { DEFAULT_SUPPLEMENTS, readRecordSupplements, type SupplementDefinition } from '@/lib/supplements'
+import { readSupplementSettings, readRecordSupplements, type SupplementDefinition } from '@/lib/supplements'
 import { defaultHomepageSettings, parseHomepageSettings, HOME_SECTION_KEYS, validateHomepageSettings, type HomepageSettings } from '@/lib/homepage-settings'
 import { invalidateRequestCache } from '@/lib/client-request-cache'
 import Link from 'next/link'
@@ -28,6 +29,7 @@ import { DEFAULT_QUICK_RECORD_KEYS, type QuickRecordKey } from '@/lib/quick-reco
 interface Baby {
   id: string
   name: string
+  supplementSettings?: string | null
   birthDate: string
   gender: string
 }
@@ -167,9 +169,12 @@ export default function Dashboard({
 }: Props) {
   const { openComposer, activeTimer } = useRecordComposer()
   const [homepageSettings, setHomepageSettings] = useState(() => parseHomepageSettings(JSON.stringify(initialHomepageSettings)))
-  const [supplementDefinitions, setSupplementDefinitions] = useState<SupplementDefinition[]>(DEFAULT_SUPPLEMENTS)
+  const [supplementDefinitions, setSupplementDefinitions] = useState<SupplementDefinition[]>(()=>readSupplementSettings(initialBabies.find(baby=>baby.id===(selectedBabyId ?? initialBabies[0]?.id))?.supplementSettings))
   const [clock, setClock] = useState(Date.now)
   const todayRequestIdRef = useRef(0)
+  const loadedContextRef = useRef<{babyId:string|null;date:string}>({babyId:selectedBabyId ?? initialBabies[0]?.id ?? null,date:getBeijingToday()})
+  const [todayLoading,setTodayLoading] = useState(false)
+  const [todayError,setTodayError] = useState('')
   const [babies, setBabies] = useState<Baby[]>(initialBabies)
   const [internalSelectedBabyId, setInternalSelectedBabyId] = useState<string | null>(initialBabies[0]?.id ?? null)
   const [todayRecords, setTodayRecords] = useState<FeedingRecord[]>(initialTodayRecords)
@@ -189,32 +194,33 @@ export default function Dashboard({
     }
     return false
   })
+  const preloadedDayRef = useRef(getBeijingToday())
   const preloadedBabyIdRef = useRef<string | null>(selectedBabyId ?? initialBabies[0]?.id ?? null)
 
   const resolvedSelectedBabyId = selectedBabyId ?? internalSelectedBabyId
+  const currentDataAvailable = loadedContextRef.current.babyId === resolvedSelectedBabyId && loadedContextRef.current.date === getBeijingToday()
   const hasInitialTodayData = !freshFetch && (initialTodayRecords.length > 0 || initialTodayHealthRecords.length > 0)
   const selectedSleepTimer = activeTimer?.kind === 'sleep' && activeTimer.babyId === resolvedSelectedBabyId ? activeTimer : null
-  const hasOngoingSleep = !!selectedSleepTimer || todayHealthRecords.some(record => record.type === 'SLEEP' && record.sleepStartTime && !record.sleepEndTime)
   useEffect(() => {
-    if (!hasOngoingSleep) return
     const timer = setInterval(() => setClock(Date.now()), 60000)
     return () => clearInterval(timer)
-  }, [hasOngoingSleep])
+  }, [])
   const sleepStats = summarizeHomepageSleep([
     ...todayHealthRecords,
     ...(selectedSleepTimer ? [{type:'SLEEP',sleepStartTime:new Date(selectedSleepTimer.startedAt).toISOString(),sleepEndTime:null}] : []),
   ], getBeijingToday(), Math.max(clock, Date.now()))
+  const healthSummary = todayHealthSummary(todayHealthRecords, getBeijingToday())
   const supplementEntries = todayHealthRecords.filter(record => record.type === 'AD_VITAMIN').flatMap(record => readRecordSupplements(record))
   useEffect(() => {
     let active = true
-    setSupplementDefinitions(DEFAULT_SUPPLEMENTS.map(item => ({...item})))
+    setSupplementDefinitions(readSupplementSettings(babies.find(baby=>baby.id===resolvedSelectedBabyId)?.supplementSettings))
     if (resolvedSelectedBabyId) void fetch(`/api/babies/${resolvedSelectedBabyId}/supplements`, {cache:'no-store'}).then(async response => {
       if (!response.ok) return
       const result = await response.json()
       if (active && Array.isArray(result.definitions)) setSupplementDefinitions(result.definitions)
     }).catch(error => console.error('获取营养补充项目失败:',error))
     return () => {active = false}
-  }, [resolvedSelectedBabyId])
+  }, [resolvedSelectedBabyId, babies])
 
 
   const openQuickRecord = (key: QuickRecordKey) => {
@@ -275,12 +281,19 @@ export default function Dashboard({
   const fetchTodayData = useCallback(async (force = false) => {
     if (!resolvedSelectedBabyId) return
     const requestId = ++todayRequestIdRef.current
-    if (!force && hasInitialTodayData && resolvedSelectedBabyId === preloadedBabyIdRef.current) {
+    if (!force && hasInitialTodayData && preloadedDayRef.current === getBeijingToday() && resolvedSelectedBabyId === preloadedBabyIdRef.current) {
+      loadedContextRef.current = {babyId:resolvedSelectedBabyId,date:getBeijingToday()}
+      setTodayLoading(false)
+      setTodayError('')
       setTodayRecords(initialTodayRecords)
       setTodayHealthRecords(initialTodayHealthRecords)
       setStats(buildDailyStats(initialTodayRecords, initialTodayHealthRecords))
       return
     }
+    const sameContext = loadedContextRef.current.babyId === resolvedSelectedBabyId && loadedContextRef.current.date === getBeijingToday()
+    if (!sameContext) {loadedContextRef.current={babyId:null,date:''};setTodayRecords([]);setTodayHealthRecords([]);setStats(null)}
+    setTodayLoading(true)
+    setTodayError('')
     try {
       const today = getBeijingToday()
       const [feedingResponse, healthResponse] = await Promise.all([
@@ -292,10 +305,14 @@ export default function Dashboard({
       if (todayRequestIdRef.current !== requestId) return
       const feedingData: FeedingRecord[] = Array.isArray(feeding) ? feeding.map(r => ({ ...r, recordType: 'feeding' })) : []
       const healthData: HealthRecord[] = Array.isArray(health) ? health.map(r => ({ ...r, recordType: 'health' })) : []
+      loadedContextRef.current = {babyId:resolvedSelectedBabyId,date:today}
       setTodayRecords(feedingData)
       setTodayHealthRecords(healthData)
       setStats(buildDailyStats(feedingData, healthData))
-    } catch (error) { console.error('获取今日数据失败:', error) }
+    } catch (error) {
+      if(todayRequestIdRef.current === requestId) setTodayError('今日数据更新失败，请重试。')
+      console.error('获取今日数据失败:', error)
+    } finally { if(todayRequestIdRef.current === requestId) setTodayLoading(false) }
   }, [resolvedSelectedBabyId, hasInitialTodayData, initialTodayHealthRecords, initialTodayRecords])
 
   useEffect(() => {
@@ -334,6 +351,15 @@ export default function Dashboard({
   useEffect(() => {
     fetchTodayData()
   }, [fetchTodayData])
+
+  const displayedDayRef = useRef(getBeijingToday())
+  useEffect(() => {
+    const today = getBeijingToday()
+    if (displayedDayRef.current === today && loadedContextRef.current.date === today) return
+    displayedDayRef.current = today
+    setFreshFetch(true)
+    void fetchTodayData(true)
+  }, [clock, fetchTodayData])
 
   const calculateAge = (birthDate: string) => {
     const birth = parseDateAsBeijing(birthDate)
@@ -397,10 +423,11 @@ export default function Dashboard({
   }
 
   const selectedBaby = babies.find(b => b.id === resolvedSelectedBabyId)
+  const recentMemos = initialRecentMemos.filter(memo => !memo.completed && Math.abs(Date.parse(memo.scheduledAt)-clock) <= 3*86400000).sort((a,b) => Date.parse(a.scheduledAt)-Date.parse(b.scheduledAt))
 
   const sectionContent = {
     BABY: (selectedBaby && (
-        <div className="bg-white/70 rounded-card p-4 sm:p-6 shadow-card border border-blue-50">
+        <div className="bg-white/70 rounded-card p-3 sm:p-4 shadow-card border border-blue-50">
           <div className="flex items-center gap-3">
             <BabyAvatar key={selectedBaby.id} babyId={selectedBaby.id} />
             <div className="flex-1 min-w-0">
@@ -412,39 +439,35 @@ export default function Dashboard({
           </div>
         </div>
       )),
-    SUMMARY: homepageSettings.cards.length > 0 ? <HomepageSummaryCards feedingTypes={homepageSettings.feedingTypes} onFeedingRecord={() => {
-      const types = homepageSettings.feedingTypes
-      if (!resolvedSelectedBabyId || !types.length) return
-      openComposer(types.length === 1 ? types[0] : null, {scope:'feeding',allowedTypes:types,patch:{babyId:resolvedSelectedBabyId}})
-    }} cards={homepageSettings.cards} babyId={resolvedSelectedBabyId || undefined} stats={{...(stats || buildDailyStats([],[])),...sleepStats}} supplements={supplementDefinitions} entries={supplementEntries} onRecord={key => {
+    SUMMARY: currentDataAvailable && homepageSettings.cards.length > 0 ? <HomepageSummaryCards feedingTypes={homepageSettings.feedingTypes} cards={homepageSettings.cards} stats={{...(stats || buildDailyStats([],[])),...sleepStats}} supplements={supplementDefinitions} entries={supplementEntries} solidFoodSummary={todayRecords.find(record=>record.type==='SOLID_FOOD')?.solidFoodName || '今日辅食'} onRecord={key => {
       if (resolvedSelectedBabyId) openComposer(key, { patch: { babyId: resolvedSelectedBabyId } })
     }} /> : null,
-    HEALTH: (stats && (stats.temperature || stats.weight || stats.height) && (
-        <div className="bg-white/70 rounded-card p-3 shadow-card border border-blue-50">
-          <h3 className="text-xs font-medium text-gray-500 mb-2">今日健康数据</h3>
+    HEALTH: (currentDataAvailable && (healthSummary.temperature || healthSummary.weight || healthSummary.height) && (
+        <div className="flex flex-wrap items-center gap-2 bg-white/70 rounded-card p-3 shadow-card border border-blue-50">
+          <h3 className="text-xs font-medium text-gray-500">今日健康数据</h3>
           <div className="flex flex-wrap gap-2">
-            {stats.temperature && (
+            {healthSummary.temperature && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 rounded-lg">
                 <Thermometer size={16} className="text-red-500" />
-                <span className="text-sm font-medium text-gray-900">{stats.temperature}°C</span>
+                <span className="text-sm font-medium text-gray-900">{healthSummary.temperature}°C</span>
               </div>
             )}
-            {stats.weight && (
+            {healthSummary.weight && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-lg">
                 <Scale size={16} className="text-green-500" />
-                <span className="text-sm font-medium text-gray-900">{stats.weight}kg</span>
+                <span className="text-sm font-medium text-gray-900">{healthSummary.weight}kg</span>
               </div>
             )}
-            {stats.height && (
+            {healthSummary.height && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-lg">
                 <Ruler size={16} className="text-blue-500" />
-                <span className="text-sm font-medium text-gray-900">{stats.height}cm</span>
+                <span className="text-sm font-medium text-gray-900">{healthSummary.height}cm</span>
               </div>
             )}
           </div>
         </div>
       )),
-    MEMOS: (initialRecentMemos.length > 0 && (
+    MEMOS: (recentMemos.length > 0 && (
         <div className="bg-white/70 rounded-card p-3 shadow-card border border-indigo-50">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
@@ -456,7 +479,7 @@ export default function Dashboard({
             </Link>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {initialRecentMemos.map(memo => {
+            {recentMemos.slice(0,3).map(memo => {
               const scheduledTime = new Date(memo.scheduledAt).getTime()
               const now = Date.now()
               const diffMs = scheduledTime - now
@@ -489,9 +512,9 @@ export default function Dashboard({
           </div>
         </div>
       )),
-    QUICK_RECORDS: (<div className="bg-white/70 rounded-card p-4 shadow-card border border-blue-50">
+    QUICK_RECORDS: (initialQuickRecordKeys.length > 0 && <div className="bg-white/70 rounded-card p-4 shadow-card border border-blue-50">
         <h3 className="text-base font-bold text-slate-900 mb-3">快捷记录</h3>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid gap-2" style={{gridTemplateColumns:`repeat(${Math.max(1,Math.min(4,initialQuickRecordKeys.length))},minmax(0,1fr))`}}>
           {initialQuickRecordKeys.map(key => {
             const item = getQuickRecordMeta(key)
             const tone = quickRecordToneClasses[item.tone]
@@ -502,9 +525,9 @@ export default function Dashboard({
                 type="button"
                 onClick={() => openQuickRecord(key)}
                 aria-label={`添加${item.label}记录`}
-                className={`flex w-full flex-col items-center rounded-button border bg-gradient-to-b py-3 transition hover:shadow-pressed active:scale-95 focus-visible:outline-none focus-visible:ring-2 ${tone.button}`}
+                className={`flex w-full flex-col items-center min-h-11 rounded-xl border bg-gradient-to-b py-2 transition hover:shadow-pressed active:scale-95 focus-visible:outline-none focus-visible:ring-2 ${tone.button}`}
               >
-                <span className="mb-1.5"><Icon size={22} className={tone.icon} /></span>
+                <span className="mb-1"><Icon size={20} className={tone.icon} /></span>
                 <span className={`max-w-full truncate px-1 text-[11px] font-semibold ${tone.text}`}>{item.label}</span>
               </button>
             )
@@ -519,13 +542,13 @@ export default function Dashboard({
           </Link>
         </div>
 
-        {todayRecords.length === 0 && todayHealthRecords.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+        {!currentDataAvailable ? <p className="py-3 text-sm text-slate-500">{todayLoading ? '正在获取今日记录…' : '暂时无法获取今日记录，请重试'}</p> : todayRecords.length === 0 && todayHealthRecords.length === 0 ? (
+          <div className="text-center py-4 text-gray-500">
             <p>今天还没有记录</p>
             <p className="text-sm mt-1">点击上方快捷按钮开始记录</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {sortedTodayRecords
               .map((record) => {
                 const time = record.recordType === 'feeding'
@@ -537,10 +560,10 @@ export default function Dashboard({
                 return (
                   <div
                     key={record.id}
-                    className="flex items-center justify-between p-3 bg-slate-50/80 rounded-element border border-slate-100/60"
+                    className="flex items-center justify-between px-2.5 py-2 bg-slate-50/60 rounded-element border border-slate-100/60"
                   >
                     <div className="flex items-center space-x-3 min-w-0 flex-1">
-                      <div className="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0">
                         {getRecordIcon(record.type)}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -562,9 +585,10 @@ export default function Dashboard({
   }
   return (
     <div className="mx-auto max-w-4xl space-y-4 px-3 py-4 sm:px-4">
+      {todayError && <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{todayError}{currentDataAvailable && <span>暂显示上次加载结果。</span>}<button type="button" aria-label="重新加载今日数据" disabled={todayLoading} onClick={()=>{setFreshFetch(true);void fetchTodayData(true)}} className="min-h-11 rounded-lg bg-transparent px-2 font-semibold underline">重试</button></div>}
       {HOME_SECTION_KEYS.some(key => !!sectionContent[key]) ? HOME_SECTION_KEYS.map(key => (
         sectionContent[key] ? <section key={key} data-home-section={key}>{sectionContent[key]}</section> : null
-      )) : <div className="rounded-card bg-white/70 p-6 text-center text-slate-500"><p>当前没有可展示的首页内容</p><a href="/settings/homepage" className="mt-3 inline-block text-blue-700">管理首页展示</a></div>}
+      )) : <div className="rounded-card bg-white/70 p-6 text-center text-slate-500"><p>当前没有可展示的首页内容</p></div>}
     </div>
   )
 }

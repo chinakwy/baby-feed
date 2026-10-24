@@ -51,10 +51,10 @@ export default function HomepageSettings({ onBack }: { onBack: () => void }) {
         <LayoutGrid size={22} className="shrink-0 text-blue-600" /><h1 className="min-w-0 flex-1 text-xl font-bold text-slate-900">首页展示管理</h1>
         <button type="button" disabled={!dirty || saving} onClick={() => void save()} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl bg-blue-600 px-3 text-sm font-semibold text-white disabled:bg-slate-200 disabled:text-slate-400">{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}{saving ? '保存中' : '保存'}</button>
       </header>
-      <p className="text-sm text-slate-600">首页区块固定显示。这里可调整统计卡片、喂养项目和营养补充；隐藏项目不会删除历史记录。</p>
+      <p className="text-sm text-slate-600">首页区块固定显示。统计区顺序固定，这里可选择显示的卡片、喂养项目和营养补充；隐藏项目不会删除历史记录。</p>
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {message && <p role="status" className="rounded-xl bg-green-50 p-3 text-sm text-green-800">{message}</p>}
-      <HomeVisibilityList title="统计卡片" items={HOME_CARD_KEYS.map(key => ({ key, label: HOME_CARD_LABELS[key] }))} value={settings.cards} onChange={keys => update('cards', keys)} disabled={saving} />
+      <HomeVisibilityList allowReorder={false} title="统计卡片" items={HOME_CARD_KEYS.map(key => ({ key, label: HOME_CARD_LABELS[key] }))} value={settings.cards} onChange={keys => update('cards', keys)} disabled={saving} />
       <HomeVisibilityList title="喂养项目管理" items={HOME_FEEDING_KEYS.map(key => ({key,label:HOME_FEEDING_LABELS[key]}))} value={settings.feedingTypes} onChange={keys => update('feedingTypes',keys)} disabled={saving} />
       <p className="text-xs text-slate-500">喂养项目的勾选和顺序同时用于首页统计及卡片的记录入口。卡片与喂养调整后点击顶部保存；营养项目在下方单独保存。</p>
       <section className="rounded-2xl border border-slate-200 bg-white p-4">

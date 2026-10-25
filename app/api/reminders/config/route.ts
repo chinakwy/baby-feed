@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     const rl = enforceRateLimit({
-      key: buildUserActionKey('reminder-list', session.user.id, request),
+      key: buildUserActionKey('reminder-list', familyDataOwner(session.user), request),
       ...getRateLimit('reminder-list'),
     })
     if (!rl.allowed) {
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: familyDataOwner(session.user) },
       select: { reminderSettings: true },
     })
 
@@ -71,7 +72,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const rl = enforceRateLimit({
-      key: buildUserActionKey('reminder-update', session.user.id, request),
+      key: buildUserActionKey('reminder-update', familyDataOwner(session.user), request),
       ...getRateLimit('reminder-update'),
     })
     if (!rl.allowed) {
@@ -96,7 +97,7 @@ export async function PUT(request: NextRequest) {
     }
 
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: familyDataOwner(session.user) },
       data: { reminderSettings: JSON.stringify(settings) },
     })
 

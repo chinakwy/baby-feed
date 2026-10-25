@@ -777,7 +777,7 @@ export default function TimelineComponent({
   const nextValidDate = findAdjacentValidDate(validDates, currentDateStr, 'next')
 
   return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-4">
+    <div className="tablet-page max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-4">
 
       <div className="bg-white rounded-card p-3 shadow-card border border-blue-50">
         <div className="flex items-center justify-between gap-2">

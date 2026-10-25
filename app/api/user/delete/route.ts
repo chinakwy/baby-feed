@@ -1,3 +1,4 @@
+import { canManageFamily } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { auth, invalidateUserCache } from '@/lib/auth'
@@ -15,6 +16,8 @@ export async function DELETE(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: '未授权' }, { status: 401, headers: noStoreHeaders })
     }
+    if (!canManageFamily(session.user)) return NextResponse.json({ error: '此账号仅可日常记录，不能管理宝宝或注销账户' }, { status: 403, headers: noStoreHeaders })
+
 
     const originCheck = validateSameOrigin(request)
     if (!originCheck.valid) {

@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -26,7 +27,7 @@ export async function PUT(
     }
 
     const updateRateLimit = enforceRateLimit({
-      key: buildUserActionKey('webhook-update', session.user.id, request),
+      key: buildUserActionKey('webhook-update', familyDataOwner(session.user), request),
       ...getRateLimit('webhook-update'),
     })
     if (!updateRateLimit.allowed) {
@@ -59,7 +60,7 @@ export async function PUT(
 
     // Check ownership
     const existing = await prisma.webhookEndpoint.findFirst({
-      where: { id, userId: session.user.id }
+      where: { id, userId: familyDataOwner(session.user) }
     })
 
     if (!existing) {
@@ -79,7 +80,7 @@ export async function PUT(
         return NextResponse.json({ error: urlCheck.error || 'URL 格式不正确' }, { status: 400, headers: noStoreHeaders })
       }
       updateData.url = url
-      updateData.dedupeKey = buildWebhookEndpointDedupeKey(session.user.id, url)
+      updateData.dedupeKey = buildWebhookEndpointDedupeKey(familyDataOwner(session.user), url)
     }
 
     if (description !== undefined) {
@@ -121,12 +122,12 @@ export async function PUT(
     }
 
     const claimed = await prisma.webhookEndpoint.updateMany({
-      where: { id, userId: session.user.id, updatedAt: existing.updatedAt },
+      where: { id, userId: familyDataOwner(session.user), updatedAt: existing.updatedAt },
       data: updateData,
     })
     if (claimed.count !== 1) throw new Error('WEBHOOK_UPDATE_CONFLICT')
     const updated = await prisma.webhookEndpoint.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: familyDataOwner(session.user) },
       select: {
         id: true,
         url: true,
@@ -179,7 +180,7 @@ export async function DELETE(
     }
 
     const deleteRateLimit = enforceRateLimit({
-      key: buildUserActionKey('webhook-delete', session.user.id, request),
+      key: buildUserActionKey('webhook-delete', familyDataOwner(session.user), request),
       ...getRateLimit('webhook-delete'),
     })
     if (!deleteRateLimit.allowed) {
@@ -207,7 +208,7 @@ export async function DELETE(
 
     // Check ownership
     const existing = await prisma.webhookEndpoint.findFirst({
-      where: { id, userId: session.user.id }
+      where: { id, userId: familyDataOwner(session.user) }
     })
 
     if (!existing) {
@@ -215,7 +216,7 @@ export async function DELETE(
     }
 
     const deleted = await prisma.webhookEndpoint.deleteMany({
-      where: { id, userId: session.user.id, updatedAt: existing.updatedAt },
+      where: { id, userId: familyDataOwner(session.user), updatedAt: existing.updatedAt },
     })
     if (deleted.count !== 1) throw new Error('WEBHOOK_UPDATE_CONFLICT')
 

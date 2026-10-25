@@ -26,7 +26,7 @@ test('fixed stats order ignores former custom order while card visibility remain
  const hidden=create({cards:['SLEEP']})
  try{assert.deepEqual(hidden.root.findAll(n=>typeof n.type==='string'&&n.props['data-home-card']).map(n=>n.props['data-home-card']),['SLEEP'])}finally{hidden.unmount()}
 })
-test('all configured supplements stay visible, expand full names and preserve record action',()=>{
+test('all configured supplements stay visible within a single full-card record button',()=>{
  for(const count of [1,2,3,4,12]){
   const definitions=Array.from({length:count},(_,i)=>({id:'supp'+i,name:'测试营养项目'+i,enabled:true,unit:''}))
   const opened=[];const r=create({supplements:definitions,entries:[{id:'supp0',name:'测试营养项目0'}],onRecord:type=>opened.push(type)})
@@ -35,7 +35,8 @@ test('all configured supplements stay visible, expand full names and preserve re
    assert.equal(visible[0].props['data-given'],true)
    const more=r.root.findAll(n=>n.type==='button'&&n.props['aria-label']==='查看全部营养补充项目')
    assert.equal(more.length,0)
-   if(visible.length){TestRenderer.act(()=>r.root.find(n=>n.type==='button'&&n.props['aria-label']==='查看营养项目'+definitions[0].name).props.onClick());const expanded=r.root.findByProps({role:'dialog'});for(const item of definitions)assert.ok(text(expanded).includes(item.name));assert.equal(expanded.findAllByType('a').length,0)}
+   assert.equal(r.root.find(n=>n.type==='button'&&n.props['aria-label']==='记录营养补充').findAllByType('button').length,1)
+   for(const item of definitions)assert.ok(text(r.root).includes(item.name))
    r.root.find(n=>n.type==='button'&&n.props['aria-label']==='记录营养补充').props.onClick();assert.deepEqual(opened,['AD_VITAMIN'])
   }finally{r.unmount()}
  }
@@ -46,10 +47,10 @@ test('nutrition wraps all projects instead of using a measured-width visibility 
  try{const chips=r.root.findAll(n=>n.type==='span'&&n.props['data-supplement-chip']);assert.equal(chips.length,12);assert.match(chips[0].parent.parent.props.className,/flex-wrap/)}finally{r.unmount()}
 })
 
-test('one long supplement name can open the full-name dialog without needing hidden projects',()=>{
+test('long supplement names remain fully visible and share the full-card record action',()=>{
  const name='这是一个用于验证手机完整查看的很长营养项目名称'
  const r=create({supplements:[{id:'LONG',name,enabled:true,unit:''}]})
- try{const chip=r.root.find(n=>n.type==='button'&&n.props['aria-label']==='查看营养项目'+name);TestRenderer.act(()=>chip.props.onClick());assert.ok(text(r.root.findByProps({role:'dialog'})).includes(name))}finally{r.unmount()}
+ try{const card=r.root.find(n=>n.type==='button'&&n.props['aria-label']==='记录营养补充');assert.ok(text(card).includes(name));assert.equal(card.findAll(n=>n.type==='button').length,1)}finally{r.unmount()}
 })
 
 test('sleep and diaper share equal columns and card sizing; nutrition follows separately',()=>{

@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     const listRateLimit = enforceRateLimit({
-      key: buildUserActionKey('reminder-list', session.user.id, request),
+      key: buildUserActionKey('reminder-list', familyDataOwner(session.user), request),
       ...getRateLimit('reminder-list'),
     })
     if (!listRateLimit.allowed) {
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
     const babyId = searchParams.get('babyId') || undefined
     const enabledParam = searchParams.get('enabled')
 
-    const where: Record<string, unknown> = { userId: session.user.id }
+    const where: Record<string, unknown> = { userId: familyDataOwner(session.user) }
     if (babyId) {
       where.babyId = babyId
     }
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     const createRateLimit = enforceRateLimit({
-      key: buildUserActionKey('reminder-create', session.user.id, request),
+      key: buildUserActionKey('reminder-create', familyDataOwner(session.user), request),
       ...getRateLimit('reminder-create'),
     })
     if (!createRateLimit.allowed) {
@@ -233,7 +234,7 @@ export async function POST(request: NextRequest) {
 
     // Verify baby belongs to current user (and exists)
     const baby = await prisma.baby.findFirst({
-      where: { id: babyId as string, createdBy: session.user.id },
+      where: { id: babyId as string, createdBy: familyDataOwner(session.user) },
       select: { id: true },
     })
     if (!baby) {
@@ -245,14 +246,14 @@ export async function POST(request: NextRequest) {
     try {
       rule = await prisma.$transaction(async (tx) => {
         const count = await tx.reminderRule.count({
-          where: { userId: session.user.id },
+          where: { userId: familyDataOwner(session.user) },
         })
         if (count >= MAX_RULES_PER_USER) {
           throw new Error('LIMIT_EXCEEDED')
         }
         return tx.reminderRule.create({
           data: {
-            userId: session.user.id,
+            userId: familyDataOwner(session.user),
             babyId: babyId as string,
             name: (name as string).trim(),
             enabled: typeof enabled === 'boolean' ? enabled : true,

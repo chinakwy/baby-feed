@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { defaultHomepageSettings, parseHomepageSettings, type HomepageSettings } from '@/lib/homepage-settings'
 import { prisma } from '@/lib/prisma'
 import { getBeijingToday } from '@/lib/time'
@@ -115,7 +116,7 @@ export async function getPreloadedDashboardData(): Promise<PreloadedDashboardDat
     prisma.feedingRecord.findMany({
       where: {
         babyId: initialSelectedBabyId,
-        createdBy: session.user.id,
+        createdBy: familyDataOwner(session.user),
         startTime: { gte: start, lte: end },
       },
       orderBy: { startTime: 'desc' },
@@ -136,7 +137,7 @@ export async function getPreloadedDashboardData(): Promise<PreloadedDashboardDat
     prisma.healthRecord.findMany({
       where: {
         babyId: initialSelectedBabyId,
-        createdBy: session.user.id,
+        createdBy: familyDataOwner(session.user),
         OR: buildSleepAwareOrClause(start, end),
       },
       orderBy: { recordedAt: 'desc' },
@@ -169,7 +170,7 @@ export async function getPreloadedDashboardData(): Promise<PreloadedDashboardDat
     prisma.memo.findMany({
       where: {
         babyId: initialSelectedBabyId,
-        createdBy: session.user.id,
+        createdBy: familyDataOwner(session.user),
         completed: false,
         scheduledAt: {
           gte: threeDaysAgo,

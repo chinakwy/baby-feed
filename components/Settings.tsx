@@ -45,6 +45,7 @@ interface BabyInfo {
 }
 
 interface Props {
+  canManageFamily?: boolean
   userName: string
   userEmail: string
   currentVersion: string
@@ -54,7 +55,7 @@ interface Props {
 
 type ModalType = 'addBaby' | 'editBaby' | 'editName' | 'changePassword' | null
 
-export default function SettingsComponent({ userName, userEmail, currentVersion, initialBabies = [], activeBabyId: initialActiveBabyId }: Props) {
+export default function SettingsComponent({ canManageFamily = true, userName, userEmail, currentVersion, initialBabies = [], activeBabyId: initialActiveBabyId }: Props) {
   const router = useRouter()
   const [babies, setBabies] = useState<BabyInfo[]>(initialBabies)
   const [loading, setLoading] = useState(initialBabies.length === 0)
@@ -414,7 +415,7 @@ export default function SettingsComponent({ userName, userEmail, currentVersion,
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4 px-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-4 sm:space-y-5 sm:px-4 md:pb-4">
+    <div className="tablet-page tablet-settings max-w-4xl mx-auto space-y-4 px-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-4 sm:space-y-5 sm:px-4 md:pb-4">
       {/* 用户信息卡片 */}
       <div className="bg-white rounded-card p-5 shadow-card border border-blue-50 sm:p-6 lg:p-7">
         <h2 className="text-lg font-bold text-slate-900 mb-4">账户信息</h2>
@@ -466,7 +467,7 @@ export default function SettingsComponent({ userName, userEmail, currentVersion,
           </div>
         </div>
 
-        <div className="space-y-2 pt-2 border-t border-gray-100">
+        <div className="tablet-settings-shortcuts space-y-2 pt-2 border-t border-gray-100">
           <button type="button" onClick={() => router.push('/settings/theme')} className="mobile-touch-target group flex w-full items-center justify-between rounded-xl px-2 py-3 text-left transition hover:bg-gray-50">
             <span className="flex items-center gap-3"><Palette size={18} className="text-slate-400 group-hover:text-blue-500" /><span className="text-slate-700">主题颜色</span></span><span className="text-sm text-slate-400">›</span>
           </button>
@@ -548,7 +549,7 @@ export default function SettingsComponent({ userName, userEmail, currentVersion,
       </a>
 
       {/* 宝宝管理 */}
-      <div className="bg-white rounded-card p-5 shadow-card border border-blue-50 sm:p-6 lg:p-7">
+      {canManageFamily && <div className="bg-white rounded-card p-5 shadow-card border border-blue-50 sm:p-6 lg:p-7">
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-bold text-slate-900">宝宝管理</h2>
           <button
@@ -651,9 +652,9 @@ export default function SettingsComponent({ userName, userEmail, currentVersion,
             ))}
           </div>
         )}
-      </div>
+      </div>}
 
-      <AccountDangerZone />
+      {canManageFamily && <AccountDangerZone />}
 
       <SystemVersion currentVersion={currentVersion} />
 

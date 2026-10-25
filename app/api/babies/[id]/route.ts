@@ -1,3 +1,5 @@
+import { canManageFamily } from '@/lib/family-access'
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -19,7 +21,7 @@ export async function GET(
     }
 
     const readRateLimit = enforceRateLimit({
-      key: buildUserActionKey('baby-detail-read', session.user.id, request),
+      key: buildUserActionKey('baby-detail-read', familyDataOwner(session.user), request),
       ...getRateLimit('baby-detail-read'),
     })
     if (!readRateLimit.allowed) {
@@ -40,7 +42,7 @@ export async function GET(
     const baby = await prisma.baby.findFirst({
       where: {
         id,
-        createdBy: session.user.id
+        createdBy: familyDataOwner(session.user)
       }
     })
 
@@ -65,9 +67,11 @@ export async function PUT(
     if (!session?.user) {
       return NextResponse.json({ error: '未授权' }, { status: 401, headers: noStoreHeaders })
     }
+    if (!canManageFamily(session.user)) return NextResponse.json({ error: '此账号仅可日常记录，不能管理宝宝或注销账户' }, { status: 403, headers: noStoreHeaders })
+
 
     const updateRateLimit = enforceRateLimit({
-      key: buildUserActionKey('baby-update', session.user.id, request),
+      key: buildUserActionKey('baby-update', familyDataOwner(session.user), request),
       ...getRateLimit('baby-update'),
     })
     if (!updateRateLimit.allowed) {
@@ -136,7 +140,7 @@ export async function PUT(
     const existingBaby = await prisma.baby.findFirst({
       where: {
         id,
-        createdBy: session.user.id
+        createdBy: familyDataOwner(session.user)
       }
     })
 
@@ -145,12 +149,12 @@ export async function PUT(
     }
 
     const updated = await prisma.baby.updateMany({
-      where: { id, createdBy: session.user.id, updatedAt: existingBaby.updatedAt },
+      where: { id, createdBy: familyDataOwner(session.user), updatedAt: existingBaby.updatedAt },
       data: updateData,
     })
     if (updated.count !== 1) throw new Error('BABY_UPDATE_CONFLICT')
     const baby = await prisma.baby.findFirst({
-      where: { id, createdBy: session.user.id },
+      where: { id, createdBy: familyDataOwner(session.user) },
     })
     if (!baby) throw new Error('BABY_UPDATE_CONFLICT')
 
@@ -174,9 +178,11 @@ export async function DELETE(
     if (!session?.user) {
       return NextResponse.json({ error: '未授权' }, { status: 401, headers: noStoreHeaders })
     }
+    if (!canManageFamily(session.user)) return NextResponse.json({ error: '此账号仅可日常记录，不能管理宝宝或注销账户' }, { status: 403, headers: noStoreHeaders })
+
 
     const deleteRateLimit = enforceRateLimit({
-      key: buildUserActionKey('baby-delete', session.user.id, request),
+      key: buildUserActionKey('baby-delete', familyDataOwner(session.user), request),
       ...getRateLimit('baby-delete'),
     })
     if (!deleteRateLimit.allowed) {
@@ -202,7 +208,7 @@ export async function DELETE(
     const existingBaby = await prisma.baby.findFirst({
       where: {
         id,
-        createdBy: session.user.id
+        createdBy: familyDataOwner(session.user)
       }
     })
 
@@ -212,11 +218,11 @@ export async function DELETE(
 
     await prisma.$transaction(async tx => {
       const deleted = await tx.baby.deleteMany({
-        where: { id, createdBy: session.user.id, updatedAt: existingBaby.updatedAt },
+        where: { id, createdBy: familyDataOwner(session.user), updatedAt: existingBaby.updatedAt },
       })
       if (deleted.count !== 1) throw new Error('BABY_UPDATE_CONFLICT')
       await tx.user.updateMany({
-        where: { id: session.user.id, activeBabyId: id },
+        where: { id: familyDataOwner(session.user), activeBabyId: id },
         data: { activeBabyId: null },
       })
     })

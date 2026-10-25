@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const statsRateLimit = enforceRateLimit({
-      key: buildUserActionKey('stats-query', session.user.id, request),
+      key: buildUserActionKey('stats-query', familyDataOwner(session.user), request),
       ...getRateLimit('stats-query'),
     })
     if (!statsRateLimit.allowed) {
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
     const baby = await prisma.baby.findFirst({
       where: {
         id: babyId,
-        createdBy: session.user.id
+        createdBy: familyDataOwner(session.user)
       },
       select: {
         id: true,
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
       prisma.feedingRecord.findMany({
         where: {
           babyId,
-          createdBy: session.user.id,
+          createdBy: familyDataOwner(session.user),
           startTime: {
             gte: rangeStart,
             lte: rangeEnd
@@ -127,7 +128,7 @@ export async function GET(request: NextRequest) {
       prisma.healthRecord.findMany({
         where: {
           babyId,
-          createdBy: session.user.id,
+          createdBy: familyDataOwner(session.user),
           OR: buildSleepAwareOrClause(rangeStart, rangeEnd),
         },
         orderBy: { recordedAt: 'asc' }
@@ -260,7 +261,7 @@ export async function GET(request: NextRequest) {
       prisma.healthRecord.findMany({
         where: {
           babyId,
-          createdBy: session.user.id,
+          createdBy: familyDataOwner(session.user),
           type: 'WEIGHT',
           weight: { not: null }
         },
@@ -270,7 +271,7 @@ export async function GET(request: NextRequest) {
       prisma.healthRecord.findMany({
         where: {
           babyId,
-          createdBy: session.user.id,
+          createdBy: familyDataOwner(session.user),
           type: 'HEIGHT',
           height: { not: null }
         },
@@ -280,7 +281,7 @@ export async function GET(request: NextRequest) {
       prisma.healthRecord.findMany({
         where: {
           babyId,
-          createdBy: session.user.id,
+          createdBy: familyDataOwner(session.user),
           type: 'VACCINE',
           vaccineName: { not: null }
         },
@@ -298,7 +299,7 @@ export async function GET(request: NextRequest) {
       prisma.healthRecord.findMany({
         where: {
           babyId,
-          createdBy: session.user.id,
+          createdBy: familyDataOwner(session.user),
           type: 'TOOTH_ERUPTION',
         },
         orderBy: [{ recordedAt: 'asc' }, { createdAt: 'asc' }],
@@ -313,7 +314,7 @@ export async function GET(request: NextRequest) {
       prisma.healthRecord.findMany({
         where: {
           babyId,
-          createdBy: session.user.id,
+          createdBy: familyDataOwner(session.user),
           type: 'MEDICATION',
           medicationName: { not: null },
           recordedAt: {
@@ -333,7 +334,7 @@ export async function GET(request: NextRequest) {
       prisma.memo.findMany({
         where: {
           babyId,
-          createdBy: session.user.id,
+          createdBy: familyDataOwner(session.user),
         },
         orderBy: { scheduledAt: 'desc' },
         select: {

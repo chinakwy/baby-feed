@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/lib/auth'
@@ -16,11 +17,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const valid = validateId(id, '回收站记录ID')
   if (!valid.valid) return NextResponse.json({ error: valid.error }, { status: 400, headers: noStoreHeaders })
   try {
-    const result = await restoreDeletedRecord(session.user.id, id)
+    const result = await restoreDeletedRecord(familyDataOwner(session.user), id)
     if (result.kind === 'feeding') {
-      await emitFeedingCreated(session.user.id, result.record, result.baby).catch(error => logError('恢复后的通知事件写入失败', error))
+      await emitFeedingCreated(familyDataOwner(session.user), result.record, result.baby).catch(error => logError('恢复后的通知事件写入失败', error))
     } else {
-      await emitHealthCreated(session.user.id, result.record, result.baby).catch(error => logError('恢复后的通知事件写入失败', error))
+      await emitHealthCreated(familyDataOwner(session.user), result.record, result.baby).catch(error => logError('恢复后的通知事件写入失败', error))
     }
     for (const path of ['/', '/timeline', '/stats']) revalidatePath(path)
     return NextResponse.json({ success: true, babyId: result.baby.id, recordId: result.record.id }, { headers: noStoreHeaders })

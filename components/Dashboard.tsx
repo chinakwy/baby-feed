@@ -584,7 +584,7 @@ export default function Dashboard({
       </div>),
   }
   return (
-    <div className="mx-auto max-w-4xl space-y-2.5 px-3 py-3 sm:px-4">
+    <div className="tablet-page tablet-home mx-auto max-w-4xl space-y-2.5 px-3 py-3 sm:px-4">
       {todayError && <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{todayError}{currentDataAvailable && <span>暂显示上次加载结果。</span>}<button type="button" aria-label="重新加载今日数据" disabled={todayLoading} onClick={()=>{setFreshFetch(true);void fetchTodayData(true)}} className="min-h-11 rounded-lg bg-transparent px-2 font-semibold underline">重试</button></div>}
       {HOME_SECTION_KEYS.some(key => !!sectionContent[key]) ? HOME_SECTION_KEYS.map(key => (
         sectionContent[key] ? <section key={key} data-home-section={key}>{sectionContent[key]}</section> : null

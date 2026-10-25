@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { revalidatePath } from 'next/cache'
 import { archiveDeletedRecord } from '@/lib/deleted-records'
 import { NextRequest, NextResponse } from 'next/server'
@@ -23,7 +24,7 @@ export async function PUT(
     }
 
     const updateRateLimit = enforceRateLimit({
-      key: buildUserActionKey('feeding-update', session.user.id, request),
+      key: buildUserActionKey('feeding-update', familyDataOwner(session.user), request),
       ...getRateLimit('feeding-update'),
     })
     if (!updateRateLimit.allowed) {
@@ -75,7 +76,7 @@ export async function PUT(
       where: {
         id,
         babyId,
-        createdBy: session.user.id
+        createdBy: familyDataOwner(session.user)
       },
       include: { baby: true }
     })
@@ -156,17 +157,17 @@ export async function PUT(
 
     const record = await prisma.$transaction(async tx => {
       const claimed = await tx.feedingRecord.updateMany({
-        where: { id, babyId, createdBy: session.user.id, updatedAt: existingRecord.updatedAt },
+        where: { id, babyId, createdBy: familyDataOwner(session.user), updatedAt: existingRecord.updatedAt },
         data: normalizedData,
       })
       if (claimed.count !== 1) throw new Error('RECORD_UPDATE_CONFLICT')
       const updated = await tx.feedingRecord.findFirst({
-        where: { id, babyId, createdBy: session.user.id },
+        where: { id, babyId, createdBy: familyDataOwner(session.user) },
         include: { baby: true },
       })
       if (!updated) throw new Error('RECORD_UPDATE_CONFLICT')
       await rescheduleIntervalRulesForRecordChange({
-        userId: session.user.id,
+        userId: familyDataOwner(session.user),
         babyId: updated.babyId,
         sourceType: 'feeding',
         oldRecord: existingRecord,
@@ -176,7 +177,7 @@ export async function PUT(
       return updated
     })
 
-    await emitFeedingUpdated(session.user.id, existingRecord, record, record.baby).catch(error => {
+    await emitFeedingUpdated(familyDataOwner(session.user), existingRecord, record, record.baby).catch(error => {
       logError('Failed to emit feeding updated webhook', error)
     })
 
@@ -203,7 +204,7 @@ export async function DELETE(
     }
 
     const deleteRateLimit = enforceRateLimit({
-      key: buildUserActionKey('feeding-delete', session.user.id, request),
+      key: buildUserActionKey('feeding-delete', familyDataOwner(session.user), request),
       ...getRateLimit('feeding-delete'),
     })
     if (!deleteRateLimit.allowed) {
@@ -238,7 +239,7 @@ export async function DELETE(
       where: {
         id,
         babyId,
-        createdBy: session.user.id
+        createdBy: familyDataOwner(session.user)
       }
     })
 
@@ -247,13 +248,13 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async tx => {
-      await archiveDeletedRecord(tx, session.user.id, 'feeding', existingRecord)
+      await archiveDeletedRecord(tx, familyDataOwner(session.user), 'feeding', existingRecord)
       const deleted = await tx.feedingRecord.deleteMany({
-        where: { id, babyId, createdBy: session.user.id, updatedAt: existingRecord.updatedAt },
+        where: { id, babyId, createdBy: familyDataOwner(session.user), updatedAt: existingRecord.updatedAt },
       })
       if (deleted.count !== 1) throw new Error('RECORD_UPDATE_CONFLICT')
       await rescheduleIntervalRulesForRecordChange({
-        userId: session.user.id,
+        userId: familyDataOwner(session.user),
         babyId: existingRecord.babyId,
         sourceType: 'feeding',
         oldRecord: existingRecord,
@@ -261,7 +262,7 @@ export async function DELETE(
       })
     })
 
-    await emitFeedingDeleted(session.user.id, existingRecord).catch(error => {
+    await emitFeedingDeleted(familyDataOwner(session.user), existingRecord).catch(error => {
       logError('Failed to emit feeding deleted webhook', error)
     })
 

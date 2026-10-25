@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { prisma } from '@/lib/prisma'
 import { getPreloadedBabies, type PreloadedBaby } from '@/lib/server-babies'
 import { getServerSession } from '@/lib/server-auth'
@@ -240,8 +241,8 @@ export async function getPreloadedTimelinePageData(): Promise<PreloadedTimelineP
   }
 
   const [initialRecords, initialValidDates] = await Promise.all([
-    getPreloadedTimelineRecords(session.user.id, initialSelectedBabyId, initialDate),
-    getTimelineValidDates(session.user.id, initialSelectedBabyId),
+    getPreloadedTimelineRecords(familyDataOwner(session.user), initialSelectedBabyId, initialDate),
+    getTimelineValidDates(familyDataOwner(session.user), initialSelectedBabyId),
   ])
 
   return {

@@ -1056,7 +1056,7 @@ export default function StatsComponent({
   )
 
   return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-4">
+    <div className="tablet-page tablet-stats max-w-4xl mx-auto px-3 sm:px-4 py-4 space-y-4">
 
       {statsError && !stats ? (
         <StatsPanel className="text-center">
@@ -1115,8 +1115,8 @@ export default function StatsComponent({
                   </p>
                 </div>
 
-                <div className="mt-4 grid gap-4 xl:grid-cols-2">
-                  <div className="min-w-0 rounded-card border border-slate-200 bg-white p-3 shadow-card xl:col-span-2">
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <div className="min-w-0 rounded-card border border-slate-200 bg-white p-3 shadow-card lg:col-span-2">
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold text-slate-900">喂养趋势</p>
@@ -1893,7 +1893,7 @@ export default function StatsComponent({
               </div>
 
               {/* Trend charts moved from dashboard */}
-              <div className="grid gap-2.5 xl:grid-cols-2">
+              <div className="grid gap-2.5 lg:grid-cols-2">
                 {/* Diaper trend */}
                 <div className="min-w-0 rounded-card border border-slate-200 bg-white p-3 shadow-card">
                   <div className="mb-3 flex items-center justify-between gap-2">
@@ -2092,7 +2092,7 @@ export default function StatsComponent({
               )}
 
               {/* WHO Growth Curves */}
-              <div className="grid gap-2.5 xl:grid-cols-2">
+              <div className="grid gap-2.5 lg:grid-cols-2">
                 {/* WHO Growth Curve - Weight */}
                 {stats.babyBirthDate && (() => {
                   const gender = stats.babyGender || 'MALE'

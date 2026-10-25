@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { prisma } from '@/lib/prisma'
 import { getPreloadedBabies, type PreloadedBaby } from '@/lib/server-babies'
 import { getServerSession } from '@/lib/server-auth'
@@ -476,7 +477,7 @@ export async function getPreloadedStatsPageData(): Promise<PreloadedStatsPageDat
     }
   }
 
-  const initialStats = await getPreloadedStatsForBaby(session.user.id, initialSelectedBabyId)
+  const initialStats = await getPreloadedStatsForBaby(familyDataOwner(session.user), initialSelectedBabyId)
 
   return {
     initialBabies: babiesResult.babies,

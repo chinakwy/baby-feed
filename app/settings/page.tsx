@@ -1,3 +1,4 @@
+import { canManageFamily } from '@/lib/family-access'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { NextRequest } from 'next/server'
@@ -26,6 +27,7 @@ export default async function SettingsPage() {
 
   return (
     <Settings
+      canManageFamily={canManageFamily(session.user)}
       userName={session.user.name}
       userEmail={session.user.email}
       currentVersion={CURRENT_VERSION}

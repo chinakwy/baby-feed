@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const rateLimit = enforceRateLimit({
-      key: buildUserActionKey('sleep-summary', session.user.id, request),
+      key: buildUserActionKey('sleep-summary', familyDataOwner(session.user), request),
       ...getRateLimit('sleep-summary'),
     })
     if (!rateLimit.allowed) {
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     // Verify baby ownership
     const baby = await prisma.baby.findFirst({
-      where: { id: babyId, createdBy: session.user.id },
+      where: { id: babyId, createdBy: familyDataOwner(session.user) },
       select: { id: true },
     })
     if (!baby) {
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
     const records = await prisma.healthRecord.findMany({
       where: {
         babyId,
-        createdBy: session.user.id,
+        createdBy: familyDataOwner(session.user),
         type: 'SLEEP',
         OR: [
           { recordedAt: { gte: start, lte: end } },

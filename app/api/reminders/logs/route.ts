@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     const listRateLimit = enforceRateLimit({
-      key: buildUserActionKey('reminder-logs-list', session.user.id, request),
+      key: buildUserActionKey('reminder-logs-list', familyDataOwner(session.user), request),
       ...getRateLimit('reminder-logs-list'),
     })
     if (!listRateLimit.allowed) {
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     const offset = Math.max(parseInt(searchParams.get('offset') || '0') || 0, 0)
 
     const where = {
-      userId: session.user.id,
+      userId: familyDataOwner(session.user),
       archivedAt: null,
       ...(ruleId ? { ruleId } : {}),
     }
@@ -113,7 +114,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const deleteRateLimit = enforceRateLimit({
-      key: buildUserActionKey('reminder-logs-delete', session.user.id, request),
+      key: buildUserActionKey('reminder-logs-delete', familyDataOwner(session.user), request),
       ...getRateLimit('reminder-logs-delete'),
     })
     if (!deleteRateLimit.allowed) {
@@ -134,7 +135,7 @@ export async function DELETE(request: NextRequest) {
 
     const result = await prisma.reminderExecution.updateMany({
       where: {
-        userId: session.user.id,
+        userId: familyDataOwner(session.user),
         archivedAt: null,
         ...(ruleId ? { ruleId } : {}),
       },

@@ -1,3 +1,5 @@
+import { canManageFamily } from '@/lib/family-access'
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -15,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     const listRateLimit = enforceRateLimit({
-      key: buildUserActionKey('babies-list', session.user.id, request),
+      key: buildUserActionKey('babies-list', familyDataOwner(session.user), request),
       ...getRateLimit('babies-list'),
     })
     if (!listRateLimit.allowed) {
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     const babies = await prisma.baby.findMany({
-      where: { createdBy: session.user.id },
+      where: { createdBy: familyDataOwner(session.user) },
       orderBy: { createdAt: 'desc' }
     })
 
@@ -46,9 +48,11 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: '未授权' }, { status: 401, headers: noStoreHeaders })
     }
+    if (!canManageFamily(session.user)) return NextResponse.json({ error: '此账号仅可日常记录，不能管理宝宝或注销账户' }, { status: 403, headers: noStoreHeaders })
+
 
     const createRateLimit = enforceRateLimit({
-      key: buildUserActionKey('babies-create', session.user.id, request),
+      key: buildUserActionKey('babies-create', familyDataOwner(session.user), request),
       ...getRateLimit('babies-create'),
     })
     if (!createRateLimit.allowed) {
@@ -96,7 +100,7 @@ export async function POST(request: NextRequest) {
         name,
         birthDate: new Date(birthDate),
         gender: typedGender,
-        createdBy: session.user.id
+        createdBy: familyDataOwner(session.user)
       }
     })
 

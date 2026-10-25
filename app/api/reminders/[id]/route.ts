@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -32,7 +33,7 @@ export async function PUT(
     }
 
     const updateRateLimit = enforceRateLimit({
-      key: buildUserActionKey('reminder-update', session.user.id, request),
+      key: buildUserActionKey('reminder-update', familyDataOwner(session.user), request),
       ...getRateLimit('reminder-update'),
     })
     if (!updateRateLimit.allowed) {
@@ -60,7 +61,7 @@ export async function PUT(
 
     // Verify ownership
     const existing = await prisma.reminderRule.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: familyDataOwner(session.user) },
     })
     if (!existing) {
       return NextResponse.json({ error: '提醒规则不存在' }, { status: 404, headers: noStoreHeaders })
@@ -94,7 +95,7 @@ export async function PUT(
       }
 
       const baby = await prisma.baby.findFirst({
-        where: { id: babyId, createdBy: session.user.id },
+        where: { id: babyId, createdBy: familyDataOwner(session.user) },
         select: { id: true },
       })
       if (!baby) {
@@ -252,12 +253,12 @@ export async function PUT(
     }
 
     const claimed = await prisma.reminderRule.updateMany({
-      where: { id, userId: session.user.id, updatedAt: existing.updatedAt },
+      where: { id, userId: familyDataOwner(session.user), updatedAt: existing.updatedAt },
       data: updateData,
     })
     if (claimed.count !== 1) throw new Error('REMINDER_UPDATE_CONFLICT')
     const updated = await prisma.reminderRule.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: familyDataOwner(session.user) },
       include: {
         baby: { select: { name: true } },
       },
@@ -303,7 +304,7 @@ export async function DELETE(
     }
 
     const deleteRateLimit = enforceRateLimit({
-      key: buildUserActionKey('reminder-delete', session.user.id, request),
+      key: buildUserActionKey('reminder-delete', familyDataOwner(session.user), request),
       ...getRateLimit('reminder-delete'),
     })
     if (!deleteRateLimit.allowed) {
@@ -326,14 +327,14 @@ export async function DELETE(
 
     // Verify ownership
     const existing = await prisma.reminderRule.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: familyDataOwner(session.user) },
     })
     if (!existing) {
       return NextResponse.json({ error: '提醒规则不存在' }, { status: 404, headers: noStoreHeaders })
     }
 
     const deleted = await prisma.reminderRule.deleteMany({
-      where: { id, userId: session.user.id, updatedAt: existing.updatedAt },
+      where: { id, userId: familyDataOwner(session.user), updatedAt: existing.updatedAt },
     })
     if (deleted.count !== 1) throw new Error('REMINDER_UPDATE_CONFLICT')
 

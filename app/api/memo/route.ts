@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/lib/auth'
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     }
 
     const listRateLimit = enforceRateLimit({
-      key: buildUserActionKey('memo-list', session.user.id, request),
+      key: buildUserActionKey('memo-list', familyDataOwner(session.user), request),
       ...getRateLimit('memo-list'),
     })
     if (!listRateLimit.allowed) {
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
     }
 
     const baby = await prisma.baby.findFirst({
-      where: { id: babyId, createdBy: session.user.id },
+      where: { id: babyId, createdBy: familyDataOwner(session.user) },
       select: { id: true },
     })
     if (!baby) {
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
     }
 
     const whereClause: Record<string, unknown> = {
-      createdBy: session.user.id,
+      createdBy: familyDataOwner(session.user),
       babyId,
     }
 
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
     }
 
     const createRateLimit = enforceRateLimit({
-      key: buildUserActionKey('memo-create', session.user.id, request),
+      key: buildUserActionKey('memo-create', familyDataOwner(session.user), request),
       ...getRateLimit('memo-create'),
     })
     if (!createRateLimit.allowed) {
@@ -170,7 +171,7 @@ export async function POST(request: NextRequest) {
     const baby = await prisma.baby.findFirst({
       where: {
         id: babyId,
-        createdBy: session.user.id,
+        createdBy: familyDataOwner(session.user),
       },
     })
 
@@ -185,12 +186,12 @@ export async function POST(request: NextRequest) {
         content: typeof content === 'string' && content.trim() ? content.trim() : null,
         scheduledAt: new Date(scheduledAt as string),
         completed: false,
-        createdBy: session.user.id,
+        createdBy: familyDataOwner(session.user),
       },
       include: { baby: true },
     })
 
-    await emitMemoCreated(session.user.id, record, record.baby).catch(error => {
+    await emitMemoCreated(familyDataOwner(session.user), record, record.baby).catch(error => {
       logError('Failed to emit memo created webhook', error)
     })
 

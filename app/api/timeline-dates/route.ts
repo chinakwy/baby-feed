@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { validateId } from '@/lib/validation'
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const listRateLimit = enforceRateLimit({
-      key: buildUserActionKey('timeline-valid-dates', session.user.id, request),
+      key: buildUserActionKey('timeline-valid-dates', familyDataOwner(session.user), request),
       ...getRateLimit('timeline-valid-dates'),
     })
     if (!listRateLimit.allowed) {
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: idCheck.error }, { status: 400, headers: noStoreHeaders })
     }
 
-    const validDates = await getTimelineValidDates(session.user.id, babyId)
+    const validDates = await getTimelineValidDates(familyDataOwner(session.user), babyId)
     return NextResponse.json(validDates, { headers: noStoreHeaders })
   } catch (error) {
     logError('获取时间轴有效日期失败', error)

@@ -113,12 +113,17 @@ export async function authByApiKey(request: NextRequest): Promise<Session | null
   try {
     const apiKey = await prisma.apiKey.findUnique({
       where: { keyHash },
-      include: { user: { select: { id: true, email: true, name: true, role: true } } }
+      include: { user: { select: { id: true, email: true, name: true, role: true, familyOwnerId: true, familyRole: true } } }
     })
 
     if (!apiKey) {
       recordFailedAttempt(ip)
       return null
+    }
+
+    if (apiKey.user.familyOwnerId) {
+      const owner = await prisma.user.findUnique({ where: { id: apiKey.user.familyOwnerId }, select: { familyOwnerId: true } })
+      if (!owner || owner.familyOwnerId) return null
     }
 
     // 检查是否过期
@@ -163,7 +168,9 @@ export async function authByApiKey(request: NextRequest): Promise<Session | null
         id: apiKey.user.id,
         email: apiKey.user.email,
         name: apiKey.user.name,
-        role: apiKey.user.role,
+        familyOwnerId: apiKey.user.familyOwnerId,
+        familyRole: apiKey.user.familyRole,
+        role: apiKey.user.familyRole === 'RECORDER' ? 'USER' : apiKey.user.role,
       },
       expires: apiKey.expiresAt
         ? new Date(apiKey.expiresAt).toISOString()

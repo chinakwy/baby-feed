@@ -6,7 +6,7 @@
 
 浏览器用NextAuth Cookie（7天，密码版本和用户存在性实时验证）；自动化用 `Authorization: Bearer bfk_<64 hex>`。显式Authorization优先，失败不回退Cookie。Key由32字节随机数生成，数据库仅SHA256哈希，明文创建时一次返回，最多10个，可选1–365天过期，可吊销，记录lastUsedAt。认证失败按IP限流，业务接口按用户/操作限流，单进程内计数，多实例不共享。
 
-Key管理 `/api/user/api-keys` GET/POST/DELETE 必须用浏览器会话；POST `{name,expiresInDays?}`，DELETE `{keyId}`。管理员路径、修改密码、注销也不能用Key。其他业务API仍继承所属用户读写权限，**没有只读Key、按宝宝scope、独立Agent身份或成员共享**。数据以createdBy/userId归属过滤，不知道ID不能代替权限检查。普通用户Key无管理员权限；管理员Key也禁止管理员路径。
+Key管理 `/api/user/api-keys` GET/POST/DELETE 必须用浏览器会话；POST `{name,expiresInDays?}`，DELETE `{keyId}`。管理员路径、修改密码、注销也不能用Key。其他业务API仍继承所属用户读写权限，**没有只读Key、按宝宝scope或独立Agent身份**。支持服务端配置的家庭共享账号：familyOwnerId选择共享数据范围，familyRole=OWNER可管理宝宝，RECORDER仅日常记录且禁止宝宝资料修改和注销。账号身份、密码、Key与个人偏好保持各自独立，不能经profile请求更改共享范围或角色。数据以createdBy/userId归属过滤，不知道ID不能代替权限检查。普通用户Key无管理员权限；管理员Key也禁止管理员路径。
 
 Key不是CRON_SECRET也不是Webhook secret。Cookie写请求需可信Origin/Referer；通过认证的Bearer无需Cookie/Origin。不要将Key放入前端、URL或聊天。CORS只允许配置的一个可信origin；服务端自动化不受浏览器CORS限制。家庭私有HTTPS应分发并信任CA，不要使用`curl -k`，无需公网暴露应用。
 

@@ -354,3 +354,34 @@ textarea {
 .auth-card-animate {
   animation: auth-fade-in 0.4s ease both;
 }
+
+/* Tablet enhancement only: narrow/mobile viewports retain existing rules. */
+@media (min-width: 768px) {
+  .tablet-page {
+    width: 100%;
+    max-width: 74rem;
+    padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
+  }
+  .tablet-settings { max-width: 64rem; }
+  .tablet-settings-shortcuts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+  }
+  .tablet-settings-shortcuts > :not([hidden]) ~ :not([hidden]) { margin-top: 0; }
+  .tablet-settings-shortcuts > * { min-width: 0; }
+  .tablet-home [data-feeding-method] { min-height: 88px; }
+  .tablet-dialog-overlay {
+    padding: max(1.5rem, env(safe-area-inset-top, 0px)) max(1.5rem, env(safe-area-inset-right, 0px)) max(1.5rem, env(safe-area-inset-bottom, 0px)) max(1.5rem, env(safe-area-inset-left, 0px));
+  }
+  .tablet-dialog-panel { max-height: min(84dvh, 56rem); }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  [data-tablet-navigation] a, [data-tablet-navigation] button {
+    min-height: 44px;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    white-space: nowrap;
+  }
+}

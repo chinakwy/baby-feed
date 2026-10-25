@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { validateSupplementEntries } from '@/lib/supplements'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     const listRateLimit = enforceRateLimit({
-      key: buildUserActionKey('health-list', session.user.id, request),
+      key: buildUserActionKey('health-list', familyDataOwner(session.user), request),
       ...getRateLimit('health-list'),
     })
     if (!listRateLimit.allowed) {
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
     }
 
     const baby = await prisma.baby.findFirst({
-      where: { id: babyId, createdBy: session.user.id },
+      where: { id: babyId, createdBy: familyDataOwner(session.user) },
       select: { id: true },
     })
     if (!baby) {
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
     }
 
     const whereClause: Record<string, unknown> = {
-      createdBy: session.user.id,
+      createdBy: familyDataOwner(session.user),
       babyId,
     }
 
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     const createRateLimit = enforceRateLimit({
-      key: buildUserActionKey('health-create', session.user.id, request),
+      key: buildUserActionKey('health-create', familyDataOwner(session.user), request),
       ...getRateLimit('health-create'),
     })
     if (!createRateLimit.allowed) {
@@ -209,7 +210,7 @@ export async function POST(request: NextRequest) {
     const baby = await prisma.baby.findFirst({
       where: {
         id: babyId,
-        createdBy: session.user.id
+        createdBy: familyDataOwner(session.user)
       }
     })
 
@@ -257,7 +258,7 @@ export async function POST(request: NextRequest) {
           sleepQuality: typedType === 'SLEEP' ? (typedSleepQuality ?? null) : null,
           recordedAt: new Date(recordedAt),
           notes: typedNotes,
-          createdBy: session.user.id,
+          createdBy: familyDataOwner(session.user),
         },
         include: { baby: true, toothEruptions: true },
       })
@@ -274,14 +275,14 @@ export async function POST(request: NextRequest) {
 
       const completed = typedType === 'TOOTH_ERUPTION'
         ? await tx.healthRecord.findFirst({
-            where: { id: created.id, babyId, createdBy: session.user.id },
+            where: { id: created.id, babyId, createdBy: familyDataOwner(session.user) },
             include: { baby: true, toothEruptions: true },
           })
         : created
       if (!completed) throw new Error('RECORD_CREATE_CONFLICT')
 
       await rescheduleIntervalRulesForRecordChange({
-        userId: session.user.id,
+        userId: familyDataOwner(session.user),
         babyId,
         sourceType: 'health',
         newRecord: completed,
@@ -289,7 +290,7 @@ export async function POST(request: NextRequest) {
       })
       if (completed.type === 'VACCINE') {
         await syncAutoVaccineReminders({
-          userId: session.user.id,
+          userId: familyDataOwner(session.user),
           babyId: completed.babyId,
           recordedAtValues: [completed.recordedAt],
           db: tx,
@@ -298,7 +299,7 @@ export async function POST(request: NextRequest) {
       return completed
     })
 
-    await emitHealthCreated(session.user.id, record, record.baby).catch(error => {
+    await emitHealthCreated(familyDataOwner(session.user), record, record.baby).catch(error => {
       logError('Failed to emit health created webhook', error)
     })
     revalidatePath('/')

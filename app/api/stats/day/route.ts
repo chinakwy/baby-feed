@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     const dayStatsRateLimit = enforceRateLimit({
-      key: buildUserActionKey('stats-day-query', session.user.id, request),
+      key: buildUserActionKey('stats-day-query', familyDataOwner(session.user), request),
       ...getRateLimit('stats-day-query'),
     })
     if (!dayStatsRateLimit.allowed) {
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     const baby = await prisma.baby.findFirst({
       where: {
         id: babyId,
-        createdBy: session.user.id
+        createdBy: familyDataOwner(session.user)
       }
     })
 
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
     const feedingRecords = await prisma.feedingRecord.findMany({
       where: {
         babyId,
-        createdBy: session.user.id,
+        createdBy: familyDataOwner(session.user),
         startTime: {
           gte: dayStart,
           lte: dayEnd
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
     const healthRecords = await prisma.healthRecord.findMany({
       where: {
         babyId,
-        createdBy: session.user.id,
+        createdBy: familyDataOwner(session.user),
         OR: buildSleepAwareOrClause(dayStart, dayEnd)
       }
     })

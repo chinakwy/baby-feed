@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { readRecordSupplements, validateSupplementEntries } from '@/lib/supplements'
 import { revalidatePath } from 'next/cache'
 import { archiveDeletedRecord } from '@/lib/deleted-records'
@@ -26,7 +27,7 @@ export async function PUT(
     }
 
     const updateRateLimit = enforceRateLimit({
-      key: buildUserActionKey('health-update', session.user.id, request),
+      key: buildUserActionKey('health-update', familyDataOwner(session.user), request),
       ...getRateLimit('health-update'),
     })
     if (!updateRateLimit.allowed) {
@@ -87,7 +88,7 @@ export async function PUT(
       where: {
         id,
         babyId,
-        createdBy: session.user.id
+        createdBy: familyDataOwner(session.user)
       },
       include: { baby: true, toothEruptions: true }
     })
@@ -221,7 +222,7 @@ export async function PUT(
 
     const record = await prisma.$transaction(async tx => {
       const claimed = await tx.healthRecord.updateMany({
-        where: { id, babyId, createdBy: session.user.id, updatedAt: existingRecord.updatedAt },
+        where: { id, babyId, createdBy: familyDataOwner(session.user), updatedAt: existingRecord.updatedAt },
         data: normalizedData,
       })
       if (claimed.count !== 1) throw new Error('RECORD_UPDATE_CONFLICT')
@@ -236,12 +237,12 @@ export async function PUT(
         })
       }
       const updated = await tx.healthRecord.findFirst({
-        where: { id, babyId, createdBy: session.user.id },
+        where: { id, babyId, createdBy: familyDataOwner(session.user) },
         include: { baby: true, toothEruptions: true },
       })
       if (!updated) throw new Error('RECORD_UPDATE_CONFLICT')
       await rescheduleIntervalRulesForRecordChange({
-        userId: session.user.id,
+        userId: familyDataOwner(session.user),
         babyId: updated.babyId,
         sourceType: 'health',
         oldRecord: existingRecord,
@@ -250,7 +251,7 @@ export async function PUT(
       })
       if (existingRecord.type === 'VACCINE' || updated.type === 'VACCINE') {
         await syncAutoVaccineReminders({
-          userId: session.user.id,
+          userId: familyDataOwner(session.user),
           babyId: updated.babyId,
           recordedAtValues: [existingRecord.recordedAt, updated.recordedAt],
           db: tx,
@@ -259,7 +260,7 @@ export async function PUT(
       return updated
     })
 
-    await emitHealthUpdated(session.user.id, existingRecord, record, record.baby).catch(error => {
+    await emitHealthUpdated(familyDataOwner(session.user), existingRecord, record, record.baby).catch(error => {
       logError('Failed to emit health updated webhook', error)
     })
     for (const path of ['/', '/timeline', '/stats']) revalidatePath(path)
@@ -288,7 +289,7 @@ export async function DELETE(
     }
 
     const deleteRateLimit = enforceRateLimit({
-      key: buildUserActionKey('health-delete', session.user.id, request),
+      key: buildUserActionKey('health-delete', familyDataOwner(session.user), request),
       ...getRateLimit('health-delete'),
     })
     if (!deleteRateLimit.allowed) {
@@ -323,7 +324,7 @@ export async function DELETE(
       where: {
         id,
         babyId,
-        createdBy: session.user.id
+        createdBy: familyDataOwner(session.user)
       },
       include: { toothEruptions: true },
     })
@@ -333,13 +334,13 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async tx => {
-      await archiveDeletedRecord(tx, session.user.id, 'health', existingRecord)
+      await archiveDeletedRecord(tx, familyDataOwner(session.user), 'health', existingRecord)
       const deleted = await tx.healthRecord.deleteMany({
-        where: { id, babyId, createdBy: session.user.id, updatedAt: existingRecord.updatedAt },
+        where: { id, babyId, createdBy: familyDataOwner(session.user), updatedAt: existingRecord.updatedAt },
       })
       if (deleted.count !== 1) throw new Error('RECORD_UPDATE_CONFLICT')
       await rescheduleIntervalRulesForRecordChange({
-        userId: session.user.id,
+        userId: familyDataOwner(session.user),
         babyId: existingRecord.babyId,
         sourceType: 'health',
         oldRecord: existingRecord,
@@ -347,7 +348,7 @@ export async function DELETE(
       })
       if (existingRecord.type === 'VACCINE') {
         await syncAutoVaccineReminders({
-          userId: session.user.id,
+          userId: familyDataOwner(session.user),
           babyId: existingRecord.babyId,
           recordedAtValues: [existingRecord.recordedAt],
           db: tx,
@@ -355,7 +356,7 @@ export async function DELETE(
       }
     })
 
-    await emitHealthDeleted(session.user.id, existingRecord).catch(error => {
+    await emitHealthDeleted(familyDataOwner(session.user), existingRecord).catch(error => {
       logError('Failed to emit health deleted webhook', error)
     })
     for (const path of ['/', '/timeline', '/stats']) revalidatePath(path)

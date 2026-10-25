@@ -14,6 +14,8 @@ interface SessionUser {
   email: string
   name: string
   role: string
+  familyOwnerId?: string | null
+  familyRole?: string
 }
 
 declare module 'next-auth' {
@@ -158,18 +160,26 @@ interface UserCacheEntry {
   exists: boolean
   passwordVersion: number
   role: string
+  familyOwnerId: string | null
+  familyRole: string
 }
 
 async function validateUser(userId: string): Promise<UserCacheEntry | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, passwordVersion: true, role: true }
+    select: { id: true, passwordVersion: true, role: true, familyOwnerId: true, familyRole: true }
   })
 
+  if (user?.familyOwnerId) {
+    const owner = await prisma.user.findUnique({ where: { id: user.familyOwnerId }, select: { familyOwnerId: true } })
+    if (!owner || owner.familyOwnerId) return null
+  }
   return {
     exists: !!user,
     passwordVersion: user?.passwordVersion ?? 0,
     role: user?.role ?? 'USER',
+    familyOwnerId: user?.familyOwnerId ?? null,
+    familyRole: user?.familyRole ?? 'OWNER',
   }
 }
 
@@ -216,7 +226,9 @@ export async function auth(request: NextRequest): Promise<Session | null> {
           id: token.id as string,
           email: token.email as string,
           name: token.name as string,
-          role: userEntry.role
+          familyOwnerId: userEntry.familyOwnerId,
+          familyRole: userEntry.familyRole,
+          role: userEntry.familyRole === 'RECORDER' ? 'USER' : userEntry.role
         },
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       }

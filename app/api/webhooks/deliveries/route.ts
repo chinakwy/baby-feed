@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     const listRateLimit = enforceRateLimit({
-      key: buildUserActionKey('webhook-deliveries-list', session.user.id, request),
+      key: buildUserActionKey('webhook-deliveries-list', familyDataOwner(session.user), request),
       ...getRateLimit('webhook-deliveries-list'),
     })
     if (!listRateLimit.allowed) {
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     // If endpointId is provided, verify it belongs to this user
     if (endpointId) {
       const endpoint = await prisma.webhookEndpoint.findFirst({
-        where: { id: endpointId, userId: session.user.id }
+        where: { id: endpointId, userId: familyDataOwner(session.user) }
       })
 
       if (!endpoint) {
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
       pending: ['PENDING', 'PROCESSING'],
     }
     const where = {
-      userId: session.user.id,
+      userId: familyDataOwner(session.user),
       ...(endpointId ? { endpointId } : {}),
       ...(status && statusMap[status] ? { status: { in: statusMap[status] } } : {}),
     }
@@ -132,7 +133,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const deleteRateLimit = enforceRateLimit({
-      key: buildUserActionKey('webhook-deliveries-delete', session.user.id, request),
+      key: buildUserActionKey('webhook-deliveries-delete', familyDataOwner(session.user), request),
       ...getRateLimit('webhook-delete'),
     })
     if (!deleteRateLimit.allowed) {
@@ -159,7 +160,7 @@ export async function DELETE(request: NextRequest) {
     // If endpointId provided, verify ownership
     if (endpointId) {
       const endpoint = await prisma.webhookEndpoint.findFirst({
-        where: { id: endpointId, userId: session.user.id }
+        where: { id: endpointId, userId: familyDataOwner(session.user) }
       })
 
       if (!endpoint) {
@@ -169,7 +170,7 @@ export async function DELETE(request: NextRequest) {
 
     const result = await prisma.webhookDelivery.deleteMany({
       where: {
-        userId: session.user.id,
+        userId: familyDataOwner(session.user),
         ...(endpointId ? { endpointId } : {}),
         status: { in: ['SUCCESS', 'FAILED', 'CANCELLED'] },
       },

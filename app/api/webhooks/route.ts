@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     const listRateLimit = enforceRateLimit({
-      key: buildUserActionKey('webhook-list', session.user.id, request),
+      key: buildUserActionKey('webhook-list', familyDataOwner(session.user), request),
       ...getRateLimit('webhook-list'),
     })
     if (!listRateLimit.allowed) {
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     const endpoints = await prisma.webhookEndpoint.findMany({
-      where: { userId: session.user.id },
+      where: { userId: familyDataOwner(session.user) },
       select: {
         id: true,
         url: true,
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     const deliveryRows = await prisma.webhookDelivery.groupBy({
       by: ['endpointId'],
-      where: { userId: session.user.id },
+      where: { userId: familyDataOwner(session.user) },
       _count: { _all: true },
     })
     const deliveryCounts = new Map(deliveryRows.map(row => [row.endpointId, row._count._all]))
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     const createRateLimit = enforceRateLimit({
-      key: buildUserActionKey('webhook-create', session.user.id, request),
+      key: buildUserActionKey('webhook-create', familyDataOwner(session.user), request),
       ...getRateLimit('webhook-create'),
     })
     if (!createRateLimit.allowed) {
@@ -145,7 +146,7 @@ export async function POST(request: NextRequest) {
 
     // Check for duplicate URL per user (prevent accidental duplicates)
     const existingEndpoint = await prisma.webhookEndpoint.findFirst({
-      where: { userId: session.user.id, url },
+      where: { userId: familyDataOwner(session.user), url },
     })
     if (existingEndpoint) {
       return NextResponse.json(
@@ -159,9 +160,9 @@ export async function POST(request: NextRequest) {
 
     const endpoint = await prisma.webhookEndpoint.create({
       data: {
-        userId: session.user.id,
+        userId: familyDataOwner(session.user),
         url,
-        dedupeKey: buildWebhookEndpointDedupeKey(session.user.id, url),
+        dedupeKey: buildWebhookEndpointDedupeKey(familyDataOwner(session.user), url),
         description: typeof description === 'string' && description ? description : null,
         events: JSON.stringify(events),
         secret,

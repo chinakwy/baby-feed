@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from '@/lib/server-auth'
 
@@ -27,7 +28,7 @@ export async function getPreloadedBabies(): Promise<PreloadedBabiesResult> {
       select: { activeBabyId: true },
     }),
     prisma.baby.findMany({
-      where: { createdBy: session.user.id },
+      where: { createdBy: familyDataOwner(session.user) },
       orderBy: { createdAt: 'asc' },
       select: {
         id: true,

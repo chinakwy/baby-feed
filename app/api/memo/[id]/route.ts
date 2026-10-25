@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/lib/auth'
@@ -21,7 +22,7 @@ export async function PUT(
     }
 
     const updateRateLimit = enforceRateLimit({
-      key: buildUserActionKey('memo-update', session.user.id, request),
+      key: buildUserActionKey('memo-update', familyDataOwner(session.user), request),
       ...getRateLimit('memo-update'),
     })
     if (!updateRateLimit.allowed) {
@@ -61,7 +62,7 @@ export async function PUT(
       where: {
         id,
         babyId,
-        createdBy: session.user.id,
+        createdBy: familyDataOwner(session.user),
       },
     })
 
@@ -144,19 +145,19 @@ export async function PUT(
 
     const record = await prisma.$transaction(async tx => {
       const claimed = await tx.memo.updateMany({
-        where: { id, babyId, createdBy: session.user.id, updatedAt: existingMemo.updatedAt },
+        where: { id, babyId, createdBy: familyDataOwner(session.user), updatedAt: existingMemo.updatedAt },
         data: updateData,
       })
       if (claimed.count !== 1) throw new Error('RECORD_UPDATE_CONFLICT')
       const updated = await tx.memo.findFirst({
-        where: { id, babyId, createdBy: session.user.id },
+        where: { id, babyId, createdBy: familyDataOwner(session.user) },
         include: { baby: true },
       })
       if (!updated) throw new Error('RECORD_UPDATE_CONFLICT')
       return updated
     })
 
-    await emitMemoUpdated(session.user.id, existingMemo, record, record.baby).catch(error => {
+    await emitMemoUpdated(familyDataOwner(session.user), existingMemo, record, record.baby).catch(error => {
       logError('Failed to emit memo updated webhook', error)
     })
 
@@ -184,7 +185,7 @@ export async function DELETE(
     }
 
     const deleteRateLimit = enforceRateLimit({
-      key: buildUserActionKey('memo-delete', session.user.id, request),
+      key: buildUserActionKey('memo-delete', familyDataOwner(session.user), request),
       ...getRateLimit('memo-delete'),
     })
     if (!deleteRateLimit.allowed) {
@@ -219,7 +220,7 @@ export async function DELETE(
       where: {
         id,
         babyId,
-        createdBy: session.user.id,
+        createdBy: familyDataOwner(session.user),
       },
     })
 
@@ -228,11 +229,11 @@ export async function DELETE(
     }
 
     const deleted = await prisma.memo.deleteMany({
-      where: { id, babyId, createdBy: session.user.id, updatedAt: existingMemo.updatedAt },
+      where: { id, babyId, createdBy: familyDataOwner(session.user), updatedAt: existingMemo.updatedAt },
     })
     if (deleted.count !== 1) throw new Error('RECORD_UPDATE_CONFLICT')
 
-    await emitMemoDeleted(session.user.id, existingMemo).catch(error => {
+    await emitMemoDeleted(familyDataOwner(session.user), existingMemo).catch(error => {
       logError('Failed to emit memo deleted webhook', error)
     })
 

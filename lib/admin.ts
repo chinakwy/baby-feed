@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { canManageFamily } from '@/lib/family-access'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from '@/lib/server-auth'
@@ -24,7 +25,7 @@ export async function requireAdmin(request: NextRequest): Promise<AdminCheckResu
     return { error: '未登录', status: 401 }
   }
 
-  if (!(await isAdminUser(session.user.id))) {
+  if (!canManageFamily(session.user) || !(await isAdminUser(session.user.id))) {
     return { error: '无权限', status: 403 }
   }
 
@@ -37,7 +38,7 @@ export async function requireServerAdmin(): Promise<AdminCheckResult> {
     return { error: '未登录', status: 401 }
   }
 
-  if (!(await isAdminUser(session.user.id))) {
+  if (!canManageFamily(session.user) || !(await isAdminUser(session.user.id))) {
     return { error: '无权限', status: 403 }
   }
 

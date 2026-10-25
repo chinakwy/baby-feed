@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/lib/auth'
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     const listRateLimit = enforceRateLimit({
-      key: buildUserActionKey('feeding-list', session.user.id, request),
+      key: buildUserActionKey('feeding-list', familyDataOwner(session.user), request),
       ...getRateLimit('feeding-list'),
     })
     if (!listRateLimit.allowed) {
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
     }
 
     const baby = await prisma.baby.findFirst({
-      where: { id: babyId, createdBy: session.user.id },
+      where: { id: babyId, createdBy: familyDataOwner(session.user) },
       select: { id: true },
     })
     if (!baby) {
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
     }
 
     const whereClause: Record<string, unknown> = {
-      createdBy: session.user.id,
+      createdBy: familyDataOwner(session.user),
       babyId,
     }
 
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     const createRateLimit = enforceRateLimit({
-      key: buildUserActionKey('feeding-create', session.user.id, request),
+      key: buildUserActionKey('feeding-create', familyDataOwner(session.user), request),
       ...getRateLimit('feeding-create'),
     })
     if (!createRateLimit.allowed) {
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
     const baby = await prisma.baby.findFirst({
       where: {
         id: babyId,
-        createdBy: session.user.id
+        createdBy: familyDataOwner(session.user)
       }
     })
 
@@ -185,12 +186,12 @@ export async function POST(request: NextRequest) {
           startTime: new Date(startTime),
           endTime: typedEndTime ? new Date(typedEndTime) : null,
           notes: typedNotes,
-          createdBy: session.user.id,
+          createdBy: familyDataOwner(session.user),
         },
         include: { baby: true },
       })
       await rescheduleIntervalRulesForRecordChange({
-        userId: session.user.id,
+        userId: familyDataOwner(session.user),
         babyId,
         sourceType: 'feeding',
         newRecord: created,
@@ -199,7 +200,7 @@ export async function POST(request: NextRequest) {
       return created
     })
 
-    await emitFeedingCreated(session.user.id, record, record.baby).catch(error => {
+    await emitFeedingCreated(familyDataOwner(session.user), record, record.baby).catch(error => {
       logError('Failed to emit feeding created webhook', error)
     })
 

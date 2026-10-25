@@ -82,7 +82,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="hidden md:block sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
+      <nav data-tablet-navigation className="hidden md:block sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between h-14">
             <div className="flex items-center">

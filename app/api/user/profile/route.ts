@@ -1,3 +1,4 @@
+import { familyDataOwner } from '@/lib/family-access'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -112,7 +113,7 @@ export async function PUT(request: NextRequest) {
     const updatedUser = await prisma.$transaction(async tx => {
       if (typeof activeBabyId === 'string' && activeBabyId) {
         const baby = await tx.baby.findFirst({
-          where: { id: activeBabyId, createdBy: session.user.id },
+          where: { id: activeBabyId, createdBy: familyDataOwner(session.user) },
           select: { id: true },
         })
         if (!baby) throw new Error('BABY_NOT_FOUND')

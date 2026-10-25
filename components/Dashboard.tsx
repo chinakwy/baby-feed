@@ -512,9 +512,9 @@ export default function Dashboard({
           </div>
         </div>
       )),
-    QUICK_RECORDS: (initialQuickRecordKeys.length > 0 && <div className="bg-white/70 rounded-card p-4 shadow-card border border-blue-50">
-        <h3 className="text-base font-bold text-slate-900 mb-3">快捷记录</h3>
-        <div className="grid gap-2" style={{gridTemplateColumns:`repeat(${Math.max(1,Math.min(4,initialQuickRecordKeys.length))},minmax(0,1fr))`}}>
+    QUICK_RECORDS: (initialQuickRecordKeys.length > 0 && <div className="bg-white/70 rounded-card p-3 shadow-card border border-blue-50">
+        <h3 className="text-base font-bold text-slate-900 mb-2">快捷记录</h3>
+        <div className="grid gap-1.5" style={{gridTemplateColumns:`repeat(${Math.max(1,Math.min(4,initialQuickRecordKeys.length))},minmax(0,1fr))`}}>
           {initialQuickRecordKeys.map(key => {
             const item = getQuickRecordMeta(key)
             const tone = quickRecordToneClasses[item.tone]
@@ -534,8 +534,8 @@ export default function Dashboard({
           })}
         </div>
       </div>),
-    TODAY_RECORDS: (<div className="bg-white/70 rounded-card p-4 shadow-card border border-blue-50">
-        <div className="flex items-center justify-between mb-3">
+    TODAY_RECORDS: (<div className="bg-white/70 rounded-card p-3 shadow-card border border-blue-50">
+        <div className="flex items-center justify-between mb-2">
           <h3 className="text-base font-bold text-slate-900">今日记录</h3>
           <Link href="/timeline" className="text-sm text-blue-600 hover:text-blue-700 flex items-center">
             全部 <ChevronRight size={16} />
@@ -548,7 +548,7 @@ export default function Dashboard({
             <p className="text-sm mt-1">点击上方快捷按钮开始记录</p>
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {sortedTodayRecords
               .map((record) => {
                 const time = record.recordType === 'feeding'
@@ -584,7 +584,7 @@ export default function Dashboard({
       </div>),
   }
   return (
-    <div className="mx-auto max-w-4xl space-y-4 px-3 py-4 sm:px-4">
+    <div className="mx-auto max-w-4xl space-y-2.5 px-3 py-3 sm:px-4">
       {todayError && <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{todayError}{currentDataAvailable && <span>暂显示上次加载结果。</span>}<button type="button" aria-label="重新加载今日数据" disabled={todayLoading} onClick={()=>{setFreshFetch(true);void fetchTodayData(true)}} className="min-h-11 rounded-lg bg-transparent px-2 font-semibold underline">重试</button></div>}
       {HOME_SECTION_KEYS.some(key => !!sectionContent[key]) ? HOME_SECTION_KEYS.map(key => (
         sectionContent[key] ? <section key={key} data-home-section={key}>{sectionContent[key]}</section> : null

@@ -11,7 +11,7 @@ const trustedCorsOrigin = (() => {
 
 const nextConfig = {
   output: 'standalone',
-  // 禁用内置图片优化（本项目未使用 next/image），避免打包 sharp (~33MB)
+  // 禁用 next/image 优化；头像上传仍使用 sharp，须保留运行依赖。
   images: {
     unoptimized: true,
   },
@@ -27,8 +27,6 @@ const nextConfig = {
   // 从 standalone 输出中排除未使用的大包（减小镜像体积 ~45MB）
   outputFileTracingExcludes: {
     '*': [
-      'node_modules/@img/**',
-      'node_modules/sharp/**',
       'node_modules/typescript/**',
       'node_modules/caniuse-lite/**',
     ],

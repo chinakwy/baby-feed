@@ -15,7 +15,7 @@ export default function HomepageFeedingSummary({types,stats,onRecord,solidFoodSu
   if(!types.length)return null
   return <div data-home-card="FEEDING" data-feeding-columns={types.length} className="rounded-2xl border border-white/70 bg-white/70 p-2 shadow-sm">
     <div className="grid gap-1 sm:gap-2" style={{gridTemplateColumns:`repeat(${types.length}, minmax(0, 1fr))`}}>
-      {types.map(type=>{const item=items[type];const Icon=item.icon;return <button key={type} type="button" data-feeding-method={type} aria-label={`记录${item.name}`} onClick={()=>onRecord(type)} className={`min-h-[80px] min-w-0 rounded-xl bg-gradient-to-br py-2 ${types.length===4?'px-0.5':'px-1.5'} text-left transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${item.tone}`}>
+      {types.map(type=>{const item=items[type];const Icon=item.icon;return <button key={type} type="button" data-feeding-method={type} aria-label={`记录${item.name}`} onClick={()=>onRecord(type)} className={`min-h-[72px] min-w-0 rounded-xl bg-gradient-to-br py-1.5 ${types.length===4?'px-0.5':'px-1.5'} text-left transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${item.tone}`}>
         <span className={`flex min-w-0 items-center ${types.length===1?'gap-3':'gap-1.5'}`}>
           <Icon size={types.length>=3?19:22} className="shrink-0" aria-hidden="true"/>
           <span className="min-w-0 truncate text-xs font-semibold sm:text-sm">{item.name}</span>

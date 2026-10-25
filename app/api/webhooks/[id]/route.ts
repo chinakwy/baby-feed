@@ -100,14 +100,14 @@ export async function PUT(
     }
 
     if (maxRetries !== undefined) {
-      if (typeof maxRetries !== 'number' || maxRetries < 0 || maxRetries > 10) {
+      if (typeof maxRetries !== 'number' || !Number.isInteger(maxRetries) || maxRetries < 0 || maxRetries > 10) {
         return NextResponse.json({ error: '重试次数必须在 0-10 之间' }, { status: 400, headers: noStoreHeaders })
       }
       updateData.maxRetries = maxRetries
     }
 
     if (retryDelay !== undefined) {
-      if (typeof retryDelay !== 'number' || retryDelay < 10 || retryDelay > 3600) {
+      if (typeof retryDelay !== 'number' || !Number.isInteger(retryDelay) || retryDelay < 10 || retryDelay > 3600) {
         return NextResponse.json({ error: '重试延迟必须在 10-3600 秒之间' }, { status: 400, headers: noStoreHeaders })
       }
       updateData.retryDelay = retryDelay

@@ -89,6 +89,9 @@ export function hashApiKey(key: string): string {
  * 返回 Session 对象（与 cookie 认证兼容）或 null
  */
 export async function authByApiKey(request: NextRequest): Promise<Session | null> {
+  const path = new URL(request.url).pathname
+  // Credentials and account/admin changes require an interactive session.
+  if (/^\/api\/(?:admin(?:\/|$)|user\/(?:api-keys|password|delete)(?:\/|$))/.test(path)) return null
   const authHeader = request.headers.get('authorization')
   if (!authHeader) return null
 
@@ -139,17 +142,17 @@ export async function authByApiKey(request: NextRequest): Promise<Session | null
     // Record API Key request to activity logger
     const method = request.method || 'GET'
     const url = new URL(request.url)
-    const path = url.pathname
+    const requestPath = url.pathname
     activityLogger.record({
       source: 'api-key',
       userId: apiKey.user.id,
       groupKey: apiKey.id,
       groupLabel: apiKey.name,
       status: 'success',
-      summary: `${method} ${path}`,
+      summary: `${method} ${requestPath}`,
       meta: {
         method,
-        path,
+        path: requestPath,
         ip,
       },
     })

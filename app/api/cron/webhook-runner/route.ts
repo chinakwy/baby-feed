@@ -12,19 +12,6 @@ import { buildIpActionKey, enforceRateLimit } from '@/lib/rate-limit'
  */
 export async function GET(request: NextRequest) {
   try {
-    // Rate limit: max 2 calls per minute to prevent abuse
-    const cronRateLimit = enforceRateLimit({
-      key: buildIpActionKey('cron-webhook-runner', request),
-      limit: 2,
-      windowMs: 60 * 1000,
-    })
-    if (!cronRateLimit.allowed) {
-      return NextResponse.json(
-        { error: 'Too many requests' },
-        { status: 429 }
-      )
-    }
-
     // CRON_SECRET is required — if not set, endpoint is disabled
     const cronSecret = process.env.CRON_SECRET
     if (!cronSecret) {
@@ -60,6 +47,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+
+    // Rate limit: max 2 calls per minute to prevent abuse
+    const cronRateLimit = enforceRateLimit({
+      key: buildIpActionKey('cron-webhook-runner', request),
+      limit: 2,
+      windowMs: 60 * 1000,
+    })
+    if (!cronRateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429 }
       )
     }
 

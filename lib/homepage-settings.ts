@@ -1,5 +1,5 @@
 export const HOME_SECTION_KEYS = ['BABY', 'SUMMARY', 'MEMOS', 'HEALTH', 'QUICK_RECORDS', 'TODAY_RECORDS'] as const
-export const HOME_CARD_KEYS = ['FEEDING', 'AD_VITAMIN', 'DIAPER', 'SLEEP'] as const
+export const HOME_CARD_KEYS = ['FEEDING', 'SLEEP', 'DIAPER', 'AD_VITAMIN'] as const
 export const HOME_FEEDING_KEYS = ['BREAST_MILK', 'BREAST_MILK_BOTTLE', 'FORMULA', 'SOLID_FOOD'] as const
 export type HomeFeedingKey = typeof HOME_FEEDING_KEYS[number]
 export const HOME_FEEDING_LABELS: Record<HomeFeedingKey,string> = {BREAST_MILK:'母乳亲喂',BREAST_MILK_BOTTLE:'母乳瓶喂',FORMULA:'奶粉',SOLID_FOOD:'辅食'}

@@ -5,7 +5,7 @@ import TestRenderer from 'react-test-renderer'
 import load from './helpers/load-component.cjs'
 const Cards=load('components/HomepageSummaryCards.tsx').default
 const text=node=>typeof node==='string'?node:(node.children||[]).map(text).join('')
-const render=props=>TestRenderer.create(React.createElement(Cards,{cards:['FEEDING','AD_VITAMIN','DIAPER','SLEEP'],onRecord(){},...props}))
+const render=props=>TestRenderer.create(React.createElement(Cards,{cards:['FEEDING','SLEEP','DIAPER','AD_VITAMIN'],onRecord(){},...props}))
 test('selected feeding methods retain icons, separate quantities/counts and omit inactive methods',()=>{
  const r=render({feedingTypes:['BREAST_MILK_BOTTLE','FORMULA'],stats:{breastBottleCount:3,totalBreastMilkAmount:1200,formulaCount:2,totalFormulaAmount:180}})
  try{const rows=r.root.findAll(n=>n.type==='button'&&n.props['data-feeding-method']);assert.deepEqual(rows.map(n=>n.props['data-feeding-method']),['BREAST_MILK_BOTTLE','FORMULA']);for(const row of rows)assert.equal(row.findAllByType('svg').length,1);assert.match(text(rows[0]),/瓶喂.*1200ml.*3次/);assert.match(text(rows[1]),/奶粉.*180ml.*2次/)}finally{r.unmount()}

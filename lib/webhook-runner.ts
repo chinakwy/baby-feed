@@ -4,6 +4,7 @@ import { prisma } from './prisma'
 import { buildReminderConfigFingerprint, calculateRetryDelayMs } from './reminder-core'
 import { getIntervalSourceSnapshot } from './reminder-rescheduler'
 import crypto from 'crypto'
+import { postWebhook } from './webhook-transport'
 
 interface DeliveryResult {
   success: boolean
@@ -38,35 +39,26 @@ export async function sendWebhookDelivery(
   deliveryId: string,
   endpoint: { url: string; secret: string },
 ): Promise<DeliveryResult> {
-  if (payload.length > MAX_PAYLOAD_SIZE) {
+  if (Buffer.byteLength(payload) > MAX_PAYLOAD_SIZE) {
     return { success: false, error: `Payload exceeds maximum size (${MAX_PAYLOAD_SIZE} bytes)` }
   }
 
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 10_000)
   try {
-    const response = await fetch(endpoint.url, {
-      method: 'POST',
-      headers: {
+    const status = await postWebhook(endpoint.url, payload, {
         'Content-Type': 'application/json',
         'X-Webhook-Signature': signWebhookPayload(payload, endpoint.secret),
         'X-Webhook-Event-Type': eventType,
         'X-Webhook-Event-ID': eventId,
         'X-Webhook-Delivery-ID': deliveryId,
         'X-Webhook-Timestamp': new Date().toISOString(),
-      },
-      body: payload,
-      signal: controller.signal,
     })
-    if (!response.ok) return { success: false, httpStatus: response.status, error: `HTTP ${response.status}` }
-    return { success: true, httpStatus: response.status }
+    if (status < 200 || status >= 300) return { success: false, httpStatus: status, error: `HTTP ${status}` }
+    return { success: true, httpStatus: status }
   } catch (error) {
     return {
       success: false,
       error: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
     }
-  } finally {
-    clearTimeout(timeoutId)
   }
 }
 

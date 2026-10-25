@@ -28,6 +28,8 @@ import json
 import logging
 import os
 import sys
+import re
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -46,7 +48,8 @@ PORT = int(os.getenv("PORT", "5000"))
 DATA_DIR = Path(os.getenv("DATA_DIR", "./webhook_data"))
 
 # 创建数据存储目录
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+DATA_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+DATA_DIR.chmod(0o700)
 
 # ---------------------------------------------------------------------------
 # 日志配置
@@ -68,15 +71,16 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 100 * 1024
 
 
 def verify_signature(payload: bytes, signature: str, secret: str) -> bool:
     """验证 HMAC-SHA256 签名"""
     if not secret:
-        logger.warning("未配置 WEBHOOK_SECRET，跳过签名验证")
-        return True
+        logger.error("WEBHOOK_SECRET required")
+        return False
 
-    if not signature:
+    if not re.fullmatch(r"[a-f0-9]{64}", signature):
         return False
 
     expected = hmac.new(
@@ -142,7 +146,7 @@ def handle_feeding_created(data: dict):
     record = data.get("data", {})
     baby_name = record.get("baby", {}).get("name", "未知")
     feed_type = record.get("type", "未知")
-    logger.info(f"🍼 新喂养记录: {baby_name} - {feed_type}")
+    logger.info("feeding.created received")
 
 
 @on_event("feeding.updated")
@@ -166,7 +170,7 @@ def handle_health_created(data: dict):
     record = data.get("data", {})
     baby_name = record.get("baby", {}).get("name", "未知")
     health_type = record.get("type", "未知")
-    logger.info(f"💊 新健康记录: {baby_name} - {health_type}")
+    logger.info("health.created received")
 
 
 @on_event("health.updated")
@@ -187,7 +191,7 @@ def handle_health_deleted(data: dict):
 def handle_memo_created(data: dict):
     """处理新增备忘录"""
     record = data.get("data", {})
-    logger.info(f"📌 新备忘录: {record.get('title', '无标题')}")
+    logger.info("memo.created received")
 
 
 @on_event("memo.updated")
@@ -208,7 +212,7 @@ def handle_memo_deleted(data: dict):
 def handle_user_deleted(data: dict):
     """处理用户删除事件"""
     record = data.get("data", {})
-    logger.info(f"👤 用户删除: {record.get('email')} (记录数: 喂养{record.get('feedingRecordsCount', 0)}, 健康{record.get('healthRecordsCount', 0)})")
+    logger.info("user.deleted received")
 
 
 # ---------------------------------------------------------------------------
@@ -228,14 +232,9 @@ def webhook_handler():
     delivery_id = request.headers.get("X-Webhook-Delivery-ID", "")
     timestamp = request.headers.get("X-Webhook-Timestamp", "")
 
-    logger.info(
-        f"收到 Webhook: type={event_type} event_id={event_id} "
-        f"delivery_id={delivery_id} timestamp={timestamp}"
-    )
-
     # 验证签名
     if not verify_signature(payload, signature, WEBHOOK_SECRET):
-        logger.warning(f"签名验证失败! event_id={event_id}")
+        logger.warning("Webhook signature rejected")
         return jsonify({"error": "Invalid signature"}), 401
 
     # 解析 JSON
@@ -245,21 +244,28 @@ def webhook_handler():
         logger.error(f"JSON 解析失败: {e}")
         return jsonify({"error": "Invalid JSON"}), 400
 
-    # 持久化存储
-    filepath = save_event(event_type, event_data)
-    append_to_stream(event_type, event_data)
-    logger.info(f"事件已保存: {filepath}")
-
-    # 调用注册的事件处理器
-    handlers = EVENT_HANDLERS.get(event_type, [])
-    # 同时查找通配符处理器
-    handlers += EVENT_HANDLERS.get("*", [])
-
-    for handler in handlers:
-        try:
+    # Use only signed body fields for dispatch and filesystem paths.
+    if not isinstance(event_data, dict):
+        return jsonify({"error": "Invalid event"}), 400
+    event_id = event_data.get("id", "")
+    event_type = event_data.get("type", "")
+    if not isinstance(event_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", event_id):
+        return jsonify({"error": "Invalid event ID"}), 400
+    if not isinstance(event_type, str) or event_type not in {"feeding.created", "feeding.updated", "feeding.deleted", "health.created", "health.updated", "health.deleted", "memo.created", "memo.updated", "memo.deleted", "user.deleted", "reminder.fired"}:
+        return jsonify({"error": "Invalid event type"}), 400
+    # Durable deduplication survives restarts. A handler must also use event_id
+    # as its idempotency key for external side effects (crash-before-commit).
+    with sqlite3.connect(DATA_DIR / "inbox.db", timeout=10) as inbox:
+        inbox.execute("CREATE TABLE IF NOT EXISTS processed (id TEXT PRIMARY KEY)")
+        inbox.execute("BEGIN IMMEDIATE")
+        if inbox.execute("SELECT 1 FROM processed WHERE id=?", (event_id,)).fetchone():
+            return jsonify({"status": "duplicate", "event_id": event_id}), 200
+        save_event(event_type, event_data)
+        append_to_stream(event_type, event_data)
+        handlers = list(EVENT_HANDLERS.get(event_type, [])) + list(EVENT_HANDLERS.get("*", []))
+        for handler in handlers:
             handler(event_data)
-        except Exception as e:
-            logger.error(f"处理器 {handler.__name__} 执行失败: {e}")
+        inbox.execute("INSERT INTO processed(id) VALUES (?)", (event_id,))
 
     return jsonify({"status": "ok", "event_id": event_id}), 200
 

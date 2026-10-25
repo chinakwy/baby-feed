@@ -48,7 +48,7 @@ test('summary cards launch the matching new-record form for the selected baby', 
 test('homepage honors persisted section/card visibility and ordering', async t => {
   const { renderer } = await setup(t, { sections: ['TODAY_RECORDS', 'SUMMARY'], cards: ['DIAPER', 'SLEEP'] })
   assert.deepEqual(renderer.root.findAll(n => typeof n.type === 'string' && n.props['data-home-section']).map(n => n.props['data-home-section']), ['BABY','SUMMARY','QUICK_RECORDS','TODAY_RECORDS'])
-  assert.deepEqual(renderer.root.findAll(n => typeof n.type === 'string' && n.props['data-home-card']).map(n => n.props['data-home-card']), ['DIAPER','SLEEP'])
+  assert.deepEqual(renderer.root.findAll(n => typeof n.type === 'string' && n.props['data-home-card']).map(n => n.props['data-home-card']), ['SLEEP','DIAPER'])
 })
 
 test('old hidden-section settings cannot hide the fixed homepage blocks', async t => {

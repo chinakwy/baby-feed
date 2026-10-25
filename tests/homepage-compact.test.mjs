@@ -5,7 +5,7 @@ import TestRenderer from 'react-test-renderer'
 import load from './helpers/load-component.cjs'
 const Cards=load('components/HomepageSummaryCards.tsx').default
 const methods=['BREAST_MILK','BREAST_MILK_BOTTLE','FORMULA','SOLID_FOOD']
-const keys=['FEEDING','AD_VITAMIN','DIAPER','SLEEP']
+const keys=['FEEDING','SLEEP','DIAPER','AD_VITAMIN']
 const text=n=>typeof n==='string'?n:(n.children||[]).map(text).join('')
 const create=props=>TestRenderer.create(React.createElement(Cards,{cards:keys,stats:{breastFeedingCount:3,totalBreastDuration:25,breastBottleCount:1,totalBreastMilkAmount:1200,formulaCount:2,totalFormulaAmount:150,solidFoodCount:1,sleepMinutes:620,sleepCount:2},onRecord(){},...props}))
 test('one outer feeding card uses exactly the enabled number of columns and each method records its own type',()=>{
@@ -26,35 +26,41 @@ test('fixed stats order ignores former custom order while card visibility remain
  const hidden=create({cards:['SLEEP']})
  try{assert.deepEqual(hidden.root.findAll(n=>typeof n.type==='string'&&n.props['data-home-card']).map(n=>n.props['data-home-card']),['SLEEP'])}finally{hidden.unmount()}
 })
-test('supplements collapse excess projects, expand full names and preserve record action',()=>{
+test('all configured supplements stay visible, expand full names and preserve record action',()=>{
  for(const count of [1,2,3,4,12]){
   const definitions=Array.from({length:count},(_,i)=>({id:'supp'+i,name:'测试营养项目'+i,enabled:true,unit:''}))
   const opened=[];const r=create({supplements:definitions,entries:[{id:'supp0',name:'测试营养项目0'}],onRecord:type=>opened.push(type)})
   try{
-   const visible=r.root.findAll(n=>n.type==='span'&&n.props['data-supplement-chip']);assert.equal(visible.length,Math.min(count,3))
+   const visible=r.root.findAll(n=>n.type==='span'&&n.props['data-supplement-chip']);assert.equal(visible.length,count)
    assert.equal(visible[0].props['data-given'],true)
    const more=r.root.findAll(n=>n.type==='button'&&n.props['aria-label']==='查看全部营养补充项目')
-   assert.equal(more.length,count>3?1:0)
-   if(more.length){TestRenderer.act(()=>more[0].props.onClick());const expanded=r.root.findByProps({role:'dialog'});for(const item of definitions)assert.ok(text(expanded).includes(item.name));assert.equal(expanded.findAllByType('a').length,0)}
+   assert.equal(more.length,0)
+   if(visible.length){TestRenderer.act(()=>r.root.find(n=>n.type==='button'&&n.props['aria-label']==='查看营养项目'+definitions[0].name).props.onClick());const expanded=r.root.findByProps({role:'dialog'});for(const item of definitions)assert.ok(text(expanded).includes(item.name));assert.equal(expanded.findAllByType('a').length,0)}
    r.root.find(n=>n.type==='button'&&n.props['aria-label']==='记录营养补充').props.onClick();assert.deepEqual(opened,['AD_VITAMIN'])
   }finally{r.unmount()}
  }
 })
 
-test('nutrition capacity keeps readable labels and reserves a touch target for hidden projects',()=>{
- const {getSupplementVisibleCount}=load('components/HomepageSupplementSummary.tsx')
- assert.equal(typeof getSupplementVisibleCount,'function')
- for(const count of [1,2,3,4,12])for(const width of [96,120,160,240,400]){
-  const shown=getSupplementVisibleCount(width,count)
-  assert.ok(shown>=1&&shown<=Math.min(3,count))
-  if(count>shown)assert.ok(shown===1||shown*56+(shown-1)*6+50<=width)
- }
- assert.equal(getSupplementVisibleCount(240,3),3)
- assert.equal(getSupplementVisibleCount(120,12),1)
+test('nutrition wraps all projects instead of using a measured-width visibility budget',()=>{
+ const r=create({supplements:Array.from({length:12},(_,i)=>({id:'wrap'+i,name:'营养补充'+i,enabled:true,unit:''}))})
+ try{const chips=r.root.findAll(n=>n.type==='span'&&n.props['data-supplement-chip']);assert.equal(chips.length,12);assert.match(chips[0].parent.parent.props.className,/flex-wrap/)}finally{r.unmount()}
 })
 
 test('one long supplement name can open the full-name dialog without needing hidden projects',()=>{
  const name='这是一个用于验证手机完整查看的很长营养项目名称'
  const r=create({supplements:[{id:'LONG',name,enabled:true,unit:''}]})
  try{const chip=r.root.find(n=>n.type==='button'&&n.props['aria-label']==='查看营养项目'+name);TestRenderer.act(()=>chip.props.onClick());assert.ok(text(r.root.findByProps({role:'dialog'})).includes(name))}finally{r.unmount()}
+})
+
+test('sleep and diaper share equal columns and card sizing; nutrition follows separately',()=>{
+ const opened=[];const r=create({onRecord:key=>opened.push(key)})
+ try{
+  const row=r.root.findByProps({'data-summary-row':'sleep-diaper'})
+  assert.match(row.props.className,/grid-cols-2/)
+  const pair=row.findAll(n=>n.type==='button'&&n.props['data-home-card'])
+  assert.deepEqual(pair.map(n=>n.props['data-home-card']),['SLEEP','DIAPER'])
+  assert.equal(pair[0].props.className,pair[1].props.className)
+  pair.forEach(n=>n.props.onClick());assert.deepEqual(opened,['SLEEP','DIAPER'])
+ }finally{r.unmount()}
+ for(const key of ['SLEEP','DIAPER']){const single=create({cards:[key]});try{assert.match(single.root.findByProps({'data-summary-row':'sleep-diaper'}).props.className,/grid-cols-1/)}finally{single.unmount()}}
 })

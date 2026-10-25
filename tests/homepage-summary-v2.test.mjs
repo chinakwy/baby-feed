@@ -9,9 +9,9 @@ let sleep = {}
 try { sleep = load('lib/homepage-sleep.ts') } catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error }
 
 test('default cards combine feeding and replace the former formula position with sleep', () => {
- assert.deepEqual(settings.defaultHomepageSettings().cards,['FEEDING','AD_VITAMIN','DIAPER','SLEEP'])
+ assert.deepEqual(settings.defaultHomepageSettings().cards,['FEEDING','SLEEP','DIAPER','AD_VITAMIN'])
  const legacy={sections:['SUMMARY'],cards:['DIAPER','FORMULA','BREAST_MILK']}
- assert.deepEqual(settings.parseHomepageSettings(JSON.stringify(legacy)),{sections:[...settings.HOME_SECTION_KEYS],cards:['FEEDING','DIAPER','SLEEP'],feedingTypes:[...settings.HOME_FEEDING_KEYS]})
+ assert.deepEqual(settings.parseHomepageSettings(JSON.stringify(legacy)),{sections:[...settings.HOME_SECTION_KEYS],cards:['FEEDING','SLEEP','DIAPER'],feedingTypes:[...settings.HOME_FEEDING_KEYS]})
  assert.deepEqual(settings.parseHomepageSettings('{"sections":[],"cards":[]}'),{sections:[...settings.HOME_SECTION_KEYS],cards:[],feedingTypes:[...settings.HOME_FEEDING_KEYS]})
 })
 test('feeding card keeps separate method totals and opens its matching recording form', () => {

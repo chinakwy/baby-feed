@@ -57,11 +57,10 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
 # 清理 standalone 中不需要的包（nft tracer 误跟踪的依赖）
-# - @img/sharp: 图片优化库，已通过 images.unoptimized 禁用（~33MB）
+# - sharp/@img 保留，头像接口运行时需要。
 # - typescript: devDependency，运行时不需要（~9MB）
 # - caniuse-lite: browserslist 数据，运行时不查询（~2.4MB）
-RUN rm -rf node_modules/@img \
-           node_modules/typescript \
+RUN rm -rf node_modules/typescript \
            node_modules/caniuse-lite
 
 # ============================================
@@ -77,14 +76,13 @@ COPY --from=builder /app/node_modules/@libsql ./node_modules/@libsql
 COPY --from=builder /app/node_modules/@neon-rs ./node_modules/@neon-rs
 COPY --from=builder /app/node_modules/detect-libc ./node_modules/detect-libc
 
-# 清理 @libsql 中非 Alpine 平台的二进制文件（仅保留 linux-x64-musl）
+# 清理非 Alpine 平台绑定，保留 x64/arm64 musl。
 # Alpine 使用 musl libc，其他平台的 .node 文件完全不需要（节省 ~9MB）
 RUN rm -rf node_modules/@libsql/linux-x64-gnu \
            node_modules/@libsql/win32-x64-msvc \
            node_modules/@libsql/darwin-arm64 \
            node_modules/@libsql/darwin-x64 \
-           node_modules/@libsql/linux-arm64-gnu \
-           node_modules/@libsql/linux-arm64-musl
+           node_modules/@libsql/linux-arm64-gnu
 
 # 2) @prisma/adapter-libsql 及其传递依赖
 COPY --from=builder /app/node_modules/@prisma/adapter-libsql ./node_modules/@prisma/adapter-libsql

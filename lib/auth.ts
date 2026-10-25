@@ -181,6 +181,8 @@ export function invalidateUserCache(_userId: string) {
 
 export async function auth(request: NextRequest): Promise<Session | null> {
   try {
+    // An explicit Bearer credential must never inherit cookie privileges.
+    if (request.headers.has('authorization')) return await authByApiKey(request)
     // 1. 优先尝试 Cookie/Session 认证
     const token = await getToken({
       req: request,

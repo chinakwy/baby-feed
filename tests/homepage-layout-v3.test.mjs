@@ -18,7 +18,7 @@ test('legacy sections become fixed while feeding choices are validated and persi
 })
 test('four compact summaries contain no management links and honor chosen feeding methods',()=>{
  let clicked=0
- const renderer=TestRenderer.create(React.createElement(Cards,{cards:['FEEDING','AD_VITAMIN','DIAPER','SLEEP'],feedingTypes:['FORMULA','SOLID_FOOD'],stats:{formulaCount:2,totalFormulaAmount:180,solidFoodCount:1},onRecord(){clicked++}}))
+ const renderer=TestRenderer.create(React.createElement(Cards,{cards:['FEEDING','SLEEP','DIAPER','AD_VITAMIN'],feedingTypes:['FORMULA','SOLID_FOOD'],stats:{formulaCount:2,totalFormulaAmount:180,solidFoodCount:1},onRecord(){clicked++}}))
  try{
   const cards=renderer.root.findAll(n=>typeof n.type==='string'&&n.props['data-home-card'])
   assert.equal(cards.length,4)
@@ -32,7 +32,7 @@ test('four compact summaries contain no management links and honor chosen feedin
 test('manager removes section editing and saves feeding configuration beside card order',async t=>{
  const previousFetch=global.fetch,previousSelf=global.self
  global.self={setTimeout,clearTimeout}
- const original={sections:[...settings.HOME_SECTION_KEYS],cards:['FEEDING','AD_VITAMIN','DIAPER','SLEEP'],feedingTypes:['BREAST_MILK','FORMULA','SOLID_FOOD']}
+ const original={sections:[...settings.HOME_SECTION_KEYS],cards:['FEEDING','SLEEP','DIAPER','AD_VITAMIN'],feedingTypes:['BREAST_MILK','FORMULA','SOLID_FOOD']}
  let submitted
  global.fetch=async(url,options={})=>({ok:true,json:async()=>{if(options.method==='PUT'){submitted=JSON.parse(options.body);return submitted}return original}})
  let renderer;t.after(()=>{if(renderer)act(()=>renderer.unmount());global.fetch=previousFetch;global.self=previousSelf})

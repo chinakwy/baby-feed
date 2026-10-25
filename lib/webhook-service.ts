@@ -247,7 +247,8 @@ export async function emitWebhookEvent(
         recordType: payload.recordType ?? null,
         status: endpointIds.length === 0 ? 'DELIVERED' : 'PENDING',
         deliveries: {
-          create: endpointIds.map(endpointId => ({ endpointId, userId })),
+          // The event relation supplies eventId AND userId (composite FK).
+          create: endpointIds.map(endpointId => ({ endpointId })),
         },
       },
       include: { deliveries: { select: { id: true } } },

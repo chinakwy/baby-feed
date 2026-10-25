@@ -16,11 +16,11 @@ import {
   UpdateCheckError,
 } from '../lib/update-check.ts'
 
-test('package metadata is the canonical v0.22 version source', () => {
+test('package metadata is the canonical v0.30 version source', () => {
   const packageMetadata = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 
-  assert.equal(packageMetadata.version, '0.22.0')
-  assert.equal(formatDisplayVersion(packageMetadata.version), 'v0.22')
+  assert.equal(packageMetadata.version, '0.30.0')
+  assert.equal(formatDisplayVersion(packageMetadata.version), 'v0.30')
 })
 
 test('semantic versions are normalized and compared numerically', () => {

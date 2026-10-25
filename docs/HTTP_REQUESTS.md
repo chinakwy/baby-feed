@@ -1,5 +1,7 @@
 # HTTP API 接口文档
 
+> 接入与安全约束以 [API / Agent 接入说明](API_AGENT_INTEGRATION.md) 为准：显式 Bearer 优先；API Key 不能用于管理员、Key 管理、修改密码及注销接口；尚无只读 scope。自定义营养与头像接口见该说明。
+
 本文档列出了 Baby Feed 应用所有支持的 HTTP API 接口，包括请求方式、参数、作用及返回结构。
 
 ## 目录
